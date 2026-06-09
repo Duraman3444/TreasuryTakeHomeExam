@@ -5,22 +5,25 @@ This checklist outlines the development phases for the standalone proof-of-conce
 ---
 
 ### **Project Status Summary (Updated: June 9, 2026)**
-*   **Current Status**: **Core verification complete & verified live; batch + deployment in progress.**
+*   **Current Status**: **Complete & deployed.** Core single-label and batch verification both verified end-to-end against the live Gemini API, and the app is live on Vercel.
+*   **Live demo**: https://treasury-take-home-exam-wvw4.vercel.app
 *   **Accomplished Tasks**:
-    1.  **Phase 4 (Batch Import Expansion)**: Implemented full multi-image drag-and-drop batch upload and CSV form metadata parser. Added visual diagnostics for unmatched files, custom template downloader, and queue runner. *(End-to-end live batch run still being validated.)*
-    2.  **Phase 5 (Accessibility Auditing)**: Checked color contrast ratios and added high-contrast keyboard tab indicators (`:focus-visible`) across all interactive dashboard nodes.
-    3.  **Phase 6 (Handover & Deployment)**: Set up `.env.example` configurations, mapped dual LLM logic for Gemini & Claude, and compiled a deployment roadmap for Vercel, Firebase, and Azure Linux App Service.
+    1.  **Phase 4 (Batch Import)**: Full multi-image drag-and-drop batch upload and CSV form-metadata parser, with filename matching, "Unlisted (not in CSV)" handling, visual diagnostics, template downloader, and a concurrency-limited queue runner. **Verified end-to-end** with a 5-item CSV + images (correct set → all MATCH; error set → all MISMATCH, varied error types).
+    2.  **Phase 5 (Accessibility / UX)**: Restyled to a light, high-contrast **USWDS-inspired federal theme** (navy/blue palette, flat cards, no gradients/glows) suited to the 50+ agent demographic, with `:focus-visible` keyboard indicators.
+    3.  **Phase 6 (Deployment)**: Deployed to **Vercel** (root directory `label-verification`, server-side `GEMINI_API_KEY`). Production verified: page + live `/api/verify` return correct results at ~1.9s latency.
 
 *   **Live-Testing Fixes (post-integration verification):**
-    1.  Migrated the Gemini model from retired `gemini-1.5-flash` (now returns `404`) to **`gemini-2.5-flash`**; verified end-to-end against the live API.
-    2.  Set **`temperature: 0`** on both providers for deterministic, auditable extraction.
-    3.  Added the **`INCOMPLETE`** status so blank COLA form fields no longer produce misleading `MISMATCH`/`WARNING`/`"null%"` results; the form now auto-clears when a custom image is uploaded.
-    4.  Documented the **provider-routing sharp edge** (placeholder Claude key hijacks routing) and commented out the Claude key in `.env.example` by default.
+    1.  Migrated the Gemini model from retired `gemini-1.5-flash` (returns `404`) to **`gemini-2.5-flash`**; verified end-to-end.
+    2.  Upgraded **Next.js 15.1.0 → 15.5.19** to patch CVE-2025-66478 (Vercel blocks deploys on the vulnerable version).
+    3.  Set **`temperature: 0`** on both providers for deterministic, auditable extraction.
+    4.  Added the **`INCOMPLETE`** status so blank COLA form fields no longer produce misleading `MISMATCH`/`WARNING`/`"null%"`; the form auto-clears on custom image upload.
+    5.  Added **retry-with-backoff** on transient `429`/`503` (unit-tested) for resilience under load.
+    6.  Added an **"Autofill from label"** button (AI reads fields off the image as a starting point) and removed the API-key settings box (the deployed app uses the env key automatically).
+    7.  Documented the **provider-routing sharp edge** (placeholder Claude key hijacks routing) and commented out the Claude key in `.env.example` by default.
 
-*   **Remaining before final delivery:**
-    *   [ ] Verify batch processing end-to-end with a real CSV + multi-image upload.
-    *   [ ] Deploy to Vercel and record the live URL.
-    *   [ ] (Optional hardening) 503/timeout auto-retry; validate Claude key format before routing.
+*   **Known limitations (documented trade-offs):**
+    *   **Imperfect-image handling** (extreme angle/glare/lighting) relies entirely on the multimodal model and has not been formally benchmarked — flagged as out of scope per the brief.
+    *   **Cloud-API dependency**: extraction calls Google's API. Acceptable for a prototype, but a real TTB deployment would need an on-prem/Azure-hosted vision model given the agency firewall (noted by Marcus). See `design_decisions.md`.
 
 ---
 

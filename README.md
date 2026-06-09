@@ -107,17 +107,19 @@ The application is built to be highly flexible. You can provide your API keys in
 
 ## 5. Current Status & Verification Summary
 
-The **core single-label verification pipeline is complete and has been verified end-to-end against the live Gemini API.** See [`checklist.md`](./checklist.md) for the full breakdown and [`design_decisions.md`](./design_decisions.md) for known limitations.
+**Complete and deployed.** Both single-label and batch verification have been verified end-to-end against the live Gemini API, and the app is live on Vercel (see [Live Demo](#-live-demo)). See [`checklist.md`](./checklist.md) for the full breakdown and [`design_decisions.md`](./design_decisions.md) for design trade-offs.
 
 ### **Completed & verified:**
-*   **API Verification Route**: Routes to Google Gemini 2.5 Flash (default) or Anthropic Claude 3.5 Sonnet, with deterministic (`temperature: 0`) extraction from base64 images.
-*   **Single Label Verification Dashboard**: Visual HTML5 comparative canvas, real-time label text editing, word-level Longest Common Subsequence (LCS) diff viewer, and an Agent Decision panel.
-*   **Compliance Rules Engine**: Custom ABV regex parsing (percentage and proof conversion), net contents spacing tolerance, brand matching, and strict word-for-word + ALL-CAPS casing checks for the Surgeon General warning. Reports four statuses: `MATCH`, `WARNING`, `MISMATCH`, and **`INCOMPLETE`** (when a COLA form field is left blank — surfaces what the AI read instead of producing a misleading mismatch).
-*   **Accessibility (a11y) Focus**: High-contrast `:focus-visible` indicators across interactive elements for keyboard-only navigability (the 50+ agent demographic).
+*   **API Verification Route**: Routes to Google Gemini 2.5 Flash (default) or Anthropic Claude 3.5 Sonnet, with deterministic (`temperature: 0`) extraction and retry-with-backoff on transient `429`/`503`.
+*   **Single Label Verification Dashboard**: Visual HTML5 comparative canvas, real-time label text editing, word-level Longest Common Subsequence (LCS) diff viewer, an "Autofill from label" helper, and an Agent Decision panel.
+*   **Batch Verification Dashboard**: Multi-image uploader + CSV mapper with filename matching, "Unlisted (not in CSV)" handling, a client-side concurrency-limited queue, live progress/stats, diagnostics, and a CSV template. Verified live with a 5-item correct set (all MATCH) and error set (all MISMATCH).
+*   **Compliance Rules Engine**: Custom ABV regex parsing (percentage and proof conversion), net contents tolerance, brand matching, and strict word-for-word + ALL-CAPS casing checks for the Surgeon General warning. Four statuses: `MATCH`, `WARNING`, `MISMATCH`, and **`INCOMPLETE`** (blank reference field — surfaces what the AI read rather than a misleading mismatch).
+*   **UX / Accessibility**: Light, high-contrast USWDS-inspired federal theme with `:focus-visible` keyboard indicators, built for the 50+ agent demographic.
+*   **Performance**: Production verification round-trips in ~2 seconds — within the agency's 5-second requirement.
 
-### **Built, pending end-to-end verification:**
-*   **Batch Verification Dashboard**: Custom multi-image uploader + CSV mapper, client-side parallel queue (1–3 workers), progress/stats, missing-file diagnostics, and a "Download CSV Template" option. *(UI and queue logic complete; full multi-label live run still being validated.)*
-*   **Imperfect-image handling** (angle/glare/lighting) relies on the multimodal model and has not been formally benchmarked.
+### **Known limitations (documented trade-offs):**
+*   **Imperfect-image handling** (extreme angle/glare/lighting) relies on the multimodal model and has not been formally benchmarked — flagged as out of scope per the brief.
+*   **Cloud-API dependency**: a production TTB deployment would need an on-prem/Azure-hosted vision model given the agency firewall (see `design_decisions.md`).
 
 ---
 
