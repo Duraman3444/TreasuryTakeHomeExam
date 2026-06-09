@@ -78,7 +78,7 @@ Return a JSON object with this exact structure:
   "countryOfOrigin": "extracted country of origin if present (e.g. 'Product of Mexico', 'Imported from Scotland'); null if not shown (it is only required for imports)",
   "governmentWarning": "extract the complete, word-for-word government warning text starting with 'GOVERNMENT WARNING:' (include all caps and exact punctuation, numbers, and text) or null",
   "isGovernmentWarningPresent": true/false,
-  "governmentWarningProminence": "judge ONLY the font WEIGHT and size of the literal words 'GOVERNMENT WARNING:' (ignore that it is uppercase — caps alone is NOT bold). Return 'prominent' only if those words are in a visibly HEAVIER/THICKER (bold) stroke than the warning body text; return 'not_bold' if the heading is the same weight as the body text (not bold); return 'too_small' if the warning is in tiny, low-contrast, or buried text. TTB requires the heading to be bold."
+  "governmentWarningProminence": "judge the legibility/weight of the literal words 'GOVERNMENT WARNING:'. DEFAULT to 'prominent'. Only return 'not_bold' if you are HIGHLY CONFIDENT the heading's stroke is clearly thin and identical in weight to the body text with no bolding at all. Only return 'too_small' if the entire warning is genuinely tiny, very low-contrast, or buried so it is hard to read. When in any doubt, return 'prominent'. (Uppercase alone does not decide this — TTB requires the heading to be bold, but avoid false alarms.)"
 }
 
 Do not wrap in markdown or add extra text. Return only the JSON object.`;

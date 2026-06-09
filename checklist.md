@@ -44,7 +44,7 @@ This checklist outlines the development phases for the standalone proof-of-conce
   - [x] **Government Warning Checker**:
     - [x] Word-for-word string match against the CFR Title 27 standard text
     - [x] Case-sensitivity check (specifically checking if "GOVERNMENT WARNING:" is in ALL CAPS)
-    - [x] **Bold / prominence check**: the multimodal model reports whether the "GOVERNMENT WARNING:" heading is bold and conspicuous vs. not-bold or tiny/buried; non-bold or hard-to-read warnings are flagged as WARNINGs (Jenny's "all caps AND bold" / "smaller font, buried in tiny text" concern)
+    - [x] **Bold / prominence check** (best-effort, AI-assessed): the multimodal model reports whether the "GOVERNMENT WARNING:" heading is bold/conspicuous vs. clearly not-bold or tiny/buried; clear violations are flagged as reviewable WARNINGs (Jenny's "all caps AND bold" / "buried in tiny text" concern). Tuned conservatively to avoid false alarms on compliant labels; subtle font-weight cases may pass — see `design_decisions.md`
 - [x] Return structured JSON response with verification status (`MATCH`, `WARNING`, `MISMATCH`) and detailed diffs for each field
 
 ## Phase 3: Single Label Verification UI
