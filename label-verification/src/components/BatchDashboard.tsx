@@ -29,6 +29,7 @@ interface BatchItem {
   status: "pending" | "verifying" | "success" | "failed";
   report: VerificationReport | null;
   errorMessage: string | null;
+  unmatched?: boolean; // image uploaded but no matching CSV row (no reference data to verify against)
 }
 
 interface BatchDashboardProps {
@@ -122,15 +123,18 @@ export default function BatchDashboard({ apiKey }: BatchDashboardProps) {
     images: { name: string; data: string }[],
     csvRows: { filename: string; brandName: string; classType: string; abv: string; netContents: string; governmentWarning: string }[]
   ) => {
+    const cleanName = (n: string) => n.toLowerCase().split(".")[0].trim();
+    const matchedImageNames = new Set<string>();
+
     const batchItems: BatchItem[] = csvRows.map((row, idx) => {
-      const cleanName = (n: string) => n.toLowerCase().split(".")[0].trim();
       const rowClean = cleanName(row.filename);
 
       // Find matching base64 image
-      const matchedImg = images.find(img => 
-        cleanName(img.name) === rowClean || 
+      const matchedImg = images.find(img =>
+        cleanName(img.name) === rowClean ||
         img.name.toLowerCase().trim() === row.filename.toLowerCase().trim()
       );
+      if (matchedImg) matchedImageNames.add(matchedImg.name);
 
       return {
         id: `custom-batch-${idx}-${Date.now()}`,
@@ -156,7 +160,25 @@ export default function BatchDashboard({ apiKey }: BatchDashboardProps) {
       };
     });
 
-    setItems(batchItems);
+    // Represent uploaded images that aren't referenced by any CSV row, so they're
+    // visible in the queue instead of silently dropped. They can't be verified
+    // (no COLA reference data), so they're flagged for the user to add a CSV row.
+    const blankForm = { brandName: "", classType: "", abv: "", netContents: "", governmentWarning: STANDARD_GOVERNMENT_WARNING_FULL };
+    const orphanItems: BatchItem[] = images
+      .filter(img => !matchedImageNames.has(img.name))
+      .map((img, idx) => ({
+        id: `orphan-${idx}-${img.name}`,
+        name: `Unlisted Image (${img.name})`,
+        formValues: { ...blankForm },
+        labelValues: { ...blankForm },
+        imageData: img.data,
+        status: "failed",
+        report: null,
+        errorMessage: `Not listed in the CSV. Add a row with filename "${img.name}" to verify this image.`,
+        unmatched: true,
+      }));
+
+    setItems([...batchItems, ...orphanItems]);
   };
 
   // Upload handlers
@@ -465,7 +487,8 @@ export default function BatchDashboard({ apiKey }: BatchDashboardProps) {
     if (items.length === 0) return;
     setProcessing(true);
 
-    const pendingItems = items.filter(item => item.status === "pending" || item.status === "failed");
+    // Orphan images (no CSV row) are excluded — there's nothing to verify them against.
+    const pendingItems = items.filter(item => (item.status === "pending" || item.status === "failed") && !item.unmatched);
     const queue = [...pendingItems];
 
     const runWorker = async (): Promise<void> => {
@@ -981,6 +1004,20 @@ export default function BatchDashboard({ apiKey }: BatchDashboardProps) {
                 <span>{uploadError}</span>
               </div>
             )}
+
+            {/* Prompt for the missing half: batch needs BOTH the CSV (reference data) and the label images. */}
+            {customImages.length > 0 && csvData.length === 0 && (
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.8rem", color: "var(--color-warning)", fontWeight: "600", backgroundColor: "var(--color-warning-bg)", border: "1px solid var(--color-warning-border)", borderRadius: "var(--radius-sm)", padding: "0.625rem 0.875rem" }}>
+                <AlertTriangle size={16} />
+                <span>{customImages.length} image{customImages.length > 1 ? "s" : ""} uploaded. Now insert a <strong>CSV</strong> of COLA applications to build the verification queue.</span>
+              </div>
+            )}
+            {csvData.length > 0 && customImages.length === 0 && (
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.8rem", color: "var(--color-warning)", fontWeight: "600", backgroundColor: "var(--color-warning-bg)", border: "1px solid var(--color-warning-border)", borderRadius: "var(--radius-sm)", padding: "0.625rem 0.875rem" }}>
+                <AlertTriangle size={16} />
+                <span>{csvData.length} CSV record{csvData.length > 1 ? "s" : ""} loaded. Now insert the <strong>label images</strong> (PNG/JPG) so they can be matched by filename.</span>
+              </div>
+            )}
           </div>
 
           {/* Diagnostic overview box if files uploaded but matching is running */}
@@ -999,13 +1036,19 @@ export default function BatchDashboard({ apiKey }: BatchDashboardProps) {
                 <div>
                   <span style={{ color: "var(--text-secondary)" }}>Matched & Ready:</span>{" "}
                   <strong style={{ color: "var(--color-match)" }}>
-                    {items.filter(it => it.imageData).length}
+                    {items.filter(it => it.imageData && !it.unmatched).length}
                   </strong>
                 </div>
                 <div>
                   <span style={{ color: "var(--text-secondary)" }}>Missing Images:</span>{" "}
                   <strong style={{ color: "var(--color-warning)" }}>
                     {items.filter(it => !it.imageData).length}
+                  </strong>
+                </div>
+                <div>
+                  <span style={{ color: "var(--text-secondary)" }}>Unlisted (not in CSV):</span>{" "}
+                  <strong style={{ color: "var(--color-warning)" }}>
+                    {items.filter(it => it.unmatched).length}
                   </strong>
                 </div>
               </div>
@@ -1053,12 +1096,21 @@ export default function BatchDashboard({ apiKey }: BatchDashboardProps) {
                       >
                         <td style={{ padding: "0.875rem 1rem", fontWeight: "500" }}>
                           <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img 
-                              src={item.imageData} 
-                              alt="Thumbnail" 
-                              style={{ width: "36px", height: "36px", objectFit: "cover", borderRadius: "4px", backgroundColor: "#000", border: "1px solid var(--bg-tertiary)" }} 
-                            />
+                            {item.imageData ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={item.imageData}
+                                alt="Thumbnail"
+                                style={{ width: "36px", height: "36px", objectFit: "cover", borderRadius: "4px", backgroundColor: "#000", border: "1px solid var(--bg-tertiary)" }}
+                              />
+                            ) : (
+                              <div
+                                title="No matching image uploaded"
+                                style={{ width: "36px", height: "36px", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "4px", backgroundColor: "var(--bg-tertiary)", border: "1px solid var(--bg-tertiary)" }}
+                              >
+                                <FileImage size={16} style={{ color: "var(--text-muted)" }} />
+                              </div>
+                            )}
                             <span>{item.name}</span>
                           </div>
                         </td>
@@ -1076,8 +1128,8 @@ export default function BatchDashboard({ apiKey }: BatchDashboardProps) {
                             </span>
                           )}
                           {item.status === "failed" && (
-                            <span style={{ color: "var(--color-mismatch)", display: "inline-flex", alignItems: "center", gap: "0.25rem", fontSize: "0.75rem", fontWeight: "600" }} title={item.errorMessage || ""}>
-                              <AlertCircle size={14} /> Failed API
+                            <span style={{ color: item.unmatched || !item.imageData ? "var(--color-warning)" : "var(--color-mismatch)", display: "inline-flex", alignItems: "center", gap: "0.25rem", fontSize: "0.75rem", fontWeight: "600" }} title={item.errorMessage || ""}>
+                              <AlertCircle size={14} /> {item.unmatched ? "Not in CSV" : !item.imageData ? "No Image" : "Failed API"}
                             </span>
                           )}
                           {item.status === "success" && (
@@ -1088,11 +1140,13 @@ export default function BatchDashboard({ apiKey }: BatchDashboardProps) {
                                 gap: "0.25rem", 
                                 fontSize: "0.75rem", 
                                 fontWeight: "600",
-                                color: 
-                                  item.report?.overallStatus === "MATCH" 
-                                    ? "var(--color-match)" 
+                                color:
+                                  item.report?.overallStatus === "MATCH"
+                                    ? "var(--color-match)"
                                     : item.report?.overallStatus === "WARNING"
                                     ? "var(--color-warning)"
+                                    : item.report?.overallStatus === "INCOMPLETE"
+                                    ? "var(--color-incomplete)"
                                     : "var(--color-mismatch)"
                               }}
                             >
@@ -1104,6 +1158,11 @@ export default function BatchDashboard({ apiKey }: BatchDashboardProps) {
                               {item.report?.overallStatus === "WARNING" && (
                                 <>
                                   <AlertTriangle size={14} /> Warning
+                                </>
+                              )}
+                              {item.report?.overallStatus === "INCOMPLETE" && (
+                                <>
+                                  <AlertCircle size={14} /> Incomplete
                                 </>
                               )}
                               {item.report?.overallStatus === "MISMATCH" && (
@@ -1136,12 +1195,21 @@ export default function BatchDashboard({ apiKey }: BatchDashboardProps) {
                                   <h5 style={{ fontSize: "0.75rem", fontWeight: "600", color: "var(--text-muted)", textTransform: "uppercase", marginBottom: "0.5rem" }}>
                                     Label Image
                                   </h5>
-                                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                                  <img 
-                                    src={item.imageData} 
-                                    alt="Artwork" 
-                                    style={{ width: "100%", maxHeight: "250px", objectFit: "contain", borderRadius: "8px", border: "1px solid var(--bg-tertiary)", backgroundColor: "#020617" }} 
-                                  />
+                                  {item.imageData ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img
+                                      src={item.imageData}
+                                      alt="Artwork"
+                                      style={{ width: "100%", maxHeight: "250px", objectFit: "contain", borderRadius: "8px", border: "1px solid var(--bg-tertiary)", backgroundColor: "#020617" }}
+                                    />
+                                  ) : (
+                                    <div
+                                      style={{ width: "100%", height: "150px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "0.5rem", borderRadius: "8px", border: "1px dashed var(--bg-tertiary)", backgroundColor: "#020617", color: "var(--text-muted)", fontSize: "0.75rem" }}
+                                    >
+                                      <FileImage size={24} />
+                                      No matching image uploaded
+                                    </div>
+                                  )}
                               </div>
 
                               {/* Right: Compliance Report Fields */}

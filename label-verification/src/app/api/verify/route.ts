@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { verifyLabel } from "@/lib/verifier";
+import { withRetry } from "@/lib/retry";
 
 function extractJson(text: string) {
   const clean = text.trim();
@@ -79,6 +80,9 @@ Return a JSON object with this exact structure:
 
 Do not wrap in markdown or add extra text. Return only the JSON object.`;
 
+    // The provider call is wrapped in withRetry so a transient 429/503 is retried
+    // with backoff instead of failing the verification.
+    const responseText = await withRetry(async () => {
     let responseText = "";
 
     if (provider === "claude") {
@@ -156,10 +160,12 @@ Do not wrap in markdown or add extra text. Return only the JSON object.`;
 
       responseText = result.response.text();
     }
-    
+
     if (!responseText) {
       throw new Error("Empty response from AI compliance model");
     }
+    return responseText;
+    });
 
     let extractedData;
     try {
