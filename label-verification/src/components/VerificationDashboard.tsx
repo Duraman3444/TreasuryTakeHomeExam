@@ -1,13 +1,42 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { 
-  Upload, FileText, CheckCircle2, AlertTriangle, XCircle, 
-  RefreshCw, FileImage, ShieldCheck, ChevronRight, CornerDownRight, 
-  RotateCcw, Sparkles
+import {
+  Upload, FileText, CheckCircle2, AlertTriangle, XCircle,
+  RefreshCw, FileImage, ShieldCheck, ChevronRight, CornerDownRight,
+  RotateCcw, Sparkles, MinusCircle
 } from "lucide-react";
 import { LABEL_SAMPLES } from "@/lib/samples";
 import { STANDARD_GOVERNMENT_WARNING_FULL, VerificationReport, VerificationFieldResult, DiffPart } from "@/lib/verifier";
+
+// Maps a verification status to its palette so colors stay consistent everywhere.
+type FieldStatus = VerificationFieldResult["status"];
+const statusColor = (s: FieldStatus) =>
+  s === "MATCH" ? "var(--color-match)"
+  : s === "WARNING" ? "var(--color-warning)"
+  : s === "INCOMPLETE" ? "var(--color-incomplete)"
+  : "var(--color-mismatch)";
+const statusBg = (s: FieldStatus) =>
+  s === "MATCH" ? "var(--color-match-bg)"
+  : s === "WARNING" ? "var(--color-warning-bg)"
+  : s === "INCOMPLETE" ? "var(--color-incomplete-bg)"
+  : "var(--color-mismatch-bg)";
+const statusBorder = (s: FieldStatus) =>
+  s === "MATCH" ? "var(--color-match-border)"
+  : s === "WARNING" ? "var(--color-warning-border)"
+  : s === "INCOMPLETE" ? "var(--color-incomplete-border)"
+  : "var(--color-mismatch-border)";
+const StatusIcon = ({ status, size }: { status: FieldStatus; size: number }) => {
+  if (status === "MATCH") return <CheckCircle2 size={size} style={{ color: "var(--color-match)" }} />;
+  if (status === "WARNING") return <AlertTriangle size={size} style={{ color: "var(--color-warning)" }} />;
+  if (status === "INCOMPLETE") return <MinusCircle size={size} style={{ color: "var(--color-incomplete)" }} />;
+  return <XCircle size={size} style={{ color: "var(--color-mismatch)" }} />;
+};
+const overallHeadline = (s: FieldStatus) =>
+  s === "MATCH" ? "COMPLIANT"
+  : s === "WARNING" ? "COMPLIANT WITH WARNINGS"
+  : s === "INCOMPLETE" ? "INCOMPLETE — REVIEW REQUIRED"
+  : "NON-COMPLIANT";
 
 interface VerificationDashboardProps {
   apiKey: string;
@@ -235,6 +264,17 @@ export default function VerificationDashboard({ apiKey }: VerificationDashboardP
         setDecision(null);
         setDecisionSubmitted(false);
         setError(null);
+        // A custom image has no preset, so clear the previously-loaded sample's form values
+        // to avoid comparing a new label against stale reference data. The government warning
+        // is a fixed legal standard, so we keep it pre-filled (the "Reset to Standard" button).
+        setSelectedSampleId("");
+        setFormValues({
+          brandName: "",
+          classType: "",
+          abv: "",
+          netContents: "",
+          governmentWarning: STANDARD_GOVERNMENT_WARNING_FULL,
+        });
       }
     };
     reader.readAsDataURL(file);
@@ -259,8 +299,8 @@ export default function VerificationDashboard({ apiKey }: VerificationDashboardP
     setUploadedImage(null);
     setResult(null);
     setDecision(null);
-    // Reload active sample text
-    handleLoadSample(selectedSampleId);
+    // Reload active sample text (fall back to the first preset if the form was cleared for a custom upload)
+    handleLoadSample(selectedSampleId || LABEL_SAMPLES[0].id);
   };
 
   // Trigger compliance verification
@@ -317,6 +357,13 @@ export default function VerificationDashboard({ apiKey }: VerificationDashboardP
       } else if (data.report.overallStatus === "WARNING") {
         setDecision("approve");
         setAgentNotes("Minor issues detected (formatting/casing). Review matches closely, acceptable for clearance.");
+      } else if (data.report.overallStatus === "INCOMPLETE") {
+        // Blank COLA form fields — cannot auto-decide. Prompt the agent to complete the form.
+        setDecision(null);
+        const missing = Object.entries(data.report.fields as Record<string, VerificationFieldResult>)
+          .filter(([, val]) => val.status === "INCOMPLETE")
+          .map(([fieldName]) => `- ${fieldName.toUpperCase()}`);
+        setAgentNotes(`Verification incomplete. The following COLA form fields were left blank and could not be verified:\n${missing.join("\n")}\n\nEnter the application values and re-run the scan.`);
       } else {
         setDecision("reject");
         // Aggregate compliance errors
@@ -884,14 +931,8 @@ export default function VerificationDashboard({ apiKey }: VerificationDashboardP
               {/* Overall status card */}
               <div 
                 className="glass-panel" 
-                style={{ 
-                  borderLeft: `5px solid ${
-                    result.report.overallStatus === "MATCH" 
-                      ? "var(--color-match)" 
-                      : result.report.overallStatus === "WARNING"
-                      ? "var(--color-warning)"
-                      : "var(--color-mismatch)"
-                  }`,
+                style={{
+                  borderLeft: `5px solid ${statusColor(result.report.overallStatus)}`,
                   padding: "1.25rem 1.5rem"
                 }}
               >
@@ -902,25 +943,16 @@ export default function VerificationDashboard({ apiKey }: VerificationDashboardP
                     </span>
                     <h2 
                       style={{ 
-                        fontSize: "1.5rem", 
+                        fontSize: "1.5rem",
                         fontWeight: "800",
                         marginTop: "0.125rem",
-                        color: 
-                          result.report.overallStatus === "MATCH" 
-                            ? "var(--color-match)" 
-                            : result.report.overallStatus === "WARNING"
-                            ? "var(--color-warning)"
-                            : "var(--color-mismatch)"
+                        color: statusColor(result.report.overallStatus)
                       }}
                     >
-                      {result.report.overallStatus === "MATCH" && "COMPLIANT"}
-                      {result.report.overallStatus === "WARNING" && "COMPLIANT WITH WARNINGS"}
-                      {result.report.overallStatus === "MISMATCH" && "NON-COMPLIANT"}
+                      {overallHeadline(result.report.overallStatus)}
                     </h2>
                   </div>
-                  {result.report.overallStatus === "MATCH" && <CheckCircle2 size={42} style={{ color: "var(--color-match)" }} />}
-                  {result.report.overallStatus === "WARNING" && <AlertTriangle size={42} style={{ color: "var(--color-warning)" }} />}
-                  {result.report.overallStatus === "MISMATCH" && <XCircle size={42} style={{ color: "var(--color-mismatch)" }} />}
+                  <StatusIcon status={result.report.overallStatus} size={42} />
                 </div>
               </div>
 
@@ -953,30 +985,12 @@ export default function VerificationDashboard({ apiKey }: VerificationDashboardP
                             display: "flex",
                             alignItems: "center",
                             gap: "0.25rem",
-                            backgroundColor: 
-                              value.status === "MATCH" 
-                                ? "var(--color-match-bg)" 
-                                : value.status === "WARNING"
-                                ? "var(--color-warning-bg)"
-                                : "var(--color-mismatch-bg)",
-                            color: 
-                              value.status === "MATCH" 
-                                ? "var(--color-match)" 
-                                : value.status === "WARNING"
-                                ? "var(--color-warning)"
-                                : "var(--color-mismatch)",
-                            border: `1px solid ${
-                              value.status === "MATCH" 
-                                ? "var(--color-match-border)" 
-                                : value.status === "WARNING"
-                                ? "var(--color-warning-border)"
-                                : "var(--color-mismatch-border)"
-                            }`
+                            backgroundColor: statusBg(value.status),
+                            color: statusColor(value.status),
+                            border: `1px solid ${statusBorder(value.status)}`
                           }}
                         >
-                          {value.status === "MATCH" && <CheckCircle2 size={10} />}
-                          {value.status === "WARNING" && <AlertTriangle size={10} />}
-                          {value.status === "MISMATCH" && <XCircle size={10} />}
+                          <StatusIcon status={value.status} size={10} />
                           {value.status}
                         </span>
                       </div>

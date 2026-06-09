@@ -5,11 +5,22 @@ This checklist outlines the development phases for the standalone proof-of-conce
 ---
 
 ### **Project Status Summary (Updated: June 9, 2026)**
-*   **Current Status**: **100% Complete - All Phases Completed**
+*   **Current Status**: **Core verification complete & verified live; batch + deployment in progress.**
 *   **Accomplished Tasks**:
-    1.  **Phase 4 (Batch Import Expansion)**: Implemented full multi-image drag-and-drop batch upload and regex-based CSV form metadata parser. Added visual diagnostics for unmatched files, custom template downloader, and queue runner.
-    2.  **Phase 5 (Accessibility Auditing)**: Checked HSL color contrast ratios and added high-contrast keyboard tab indicators (`:focus-visible`) across all interactive dashboard nodes. Verified low-latency response times (< 2 seconds).
-    3.  **Phase 6 (Handover & Deployment)**: Set up `.env.example` configurations, mapped dual LLM logic for Gemini & Claude, and compiled a comprehensive deployment roadmap for Vercel, Firebase, and Azure Linux App Service.
+    1.  **Phase 4 (Batch Import Expansion)**: Implemented full multi-image drag-and-drop batch upload and CSV form metadata parser. Added visual diagnostics for unmatched files, custom template downloader, and queue runner. *(End-to-end live batch run still being validated.)*
+    2.  **Phase 5 (Accessibility Auditing)**: Checked color contrast ratios and added high-contrast keyboard tab indicators (`:focus-visible`) across all interactive dashboard nodes.
+    3.  **Phase 6 (Handover & Deployment)**: Set up `.env.example` configurations, mapped dual LLM logic for Gemini & Claude, and compiled a deployment roadmap for Vercel, Firebase, and Azure Linux App Service.
+
+*   **Live-Testing Fixes (post-integration verification):**
+    1.  Migrated the Gemini model from retired `gemini-1.5-flash` (now returns `404`) to **`gemini-2.5-flash`**; verified end-to-end against the live API.
+    2.  Set **`temperature: 0`** on both providers for deterministic, auditable extraction.
+    3.  Added the **`INCOMPLETE`** status so blank COLA form fields no longer produce misleading `MISMATCH`/`WARNING`/`"null%"` results; the form now auto-clears when a custom image is uploaded.
+    4.  Documented the **provider-routing sharp edge** (placeholder Claude key hijacks routing) and commented out the Claude key in `.env.example` by default.
+
+*   **Remaining before final delivery:**
+    *   [ ] Verify batch processing end-to-end with a real CSV + multi-image upload.
+    *   [ ] Deploy to Vercel and record the live URL.
+    *   [ ] (Optional hardening) 503/timeout auto-retry; validate Claude key format before routing.
 
 ---
 

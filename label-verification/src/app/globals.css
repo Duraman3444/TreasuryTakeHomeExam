@@ -30,6 +30,10 @@
   --color-mismatch-bg: rgba(239, 68, 68, 0.1);
   --color-mismatch-border: rgba(239, 68, 68, 0.3);
 
+  --color-incomplete: #64748b; /* Slate — neutral "not verified" */
+  --color-incomplete-bg: rgba(100, 116, 139, 0.12);
+  --color-incomplete-border: rgba(100, 116, 139, 0.3);
+
   /* Glassmorphism Tokens */
   --glass-bg: rgba(30, 41, 59, 0.7);
   --glass-border: 1px solid rgba(255, 255, 255, 0.08);

@@ -93,6 +93,7 @@ Do not wrap in markdown or add extra text. Return only the JSON object.`;
         body: JSON.stringify({
           model: "claude-3-5-sonnet-20241022",
           max_tokens: 1024,
+          temperature: 0,
           messages: [
             {
               role: "user",
@@ -133,11 +134,13 @@ Do not wrap in markdown or add extra text. Return only the JSON object.`;
       // Initialize the Google Generative AI client
       const genAI = new GoogleGenerativeAI(apiKey);
       
-      // Use gemini-1.5-flash for faster response times (<2 seconds typically)
+      // Use gemini-2.5-flash for faster response times (<2 seconds typically)
       const model = genAI.getGenerativeModel({
-        model: "gemini-1.5-flash",
+        model: "gemini-2.5-flash",
         generationConfig: {
           responseMimeType: "application/json",
+          // temperature 0 -> deterministic extraction so the same label yields the same fields each run
+          temperature: 0,
         },
       });
 

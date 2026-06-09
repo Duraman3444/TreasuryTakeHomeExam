@@ -1,5 +1,5 @@
 export interface VerificationFieldResult {
-  status: 'MATCH' | 'WARNING' | 'MISMATCH';
+  status: 'MATCH' | 'WARNING' | 'MISMATCH' | 'INCOMPLETE';
   expected: string;
   actual: string;
   message: string;
@@ -12,7 +12,7 @@ export interface DiffPart {
 }
 
 export interface VerificationReport {
-  overallStatus: 'MATCH' | 'WARNING' | 'MISMATCH';
+  overallStatus: 'MATCH' | 'WARNING' | 'MISMATCH' | 'INCOMPLETE';
   fields: {
     brandName: VerificationFieldResult;
     classType: VerificationFieldResult;
@@ -118,6 +118,22 @@ function normalizeString(str: string): string {
 }
 
 /**
+ * Builds an INCOMPLETE result for a field whose COLA form reference value was left blank.
+ * We surface what the AI read from the label so the agent can fill the form in, but we do
+ * NOT treat a blank reference as a match or a mismatch — there is simply nothing to compare against.
+ */
+function incompleteResult(fieldLabel: string, actual: string): VerificationFieldResult {
+  return {
+    status: 'INCOMPLETE',
+    expected: '—',
+    actual: actual || 'Not detected',
+    message: actual
+      ? `No ${fieldLabel} entered in the COLA form. The AI read "${actual}" from the label — enter the application value to verify it.`
+      : `No ${fieldLabel} entered in the COLA form, and none detected on the label.`,
+  };
+}
+
+/**
  * Verifies the extracted values against form reference values
  */
 export function verifyLabel(
@@ -142,7 +158,9 @@ export function verifyLabel(
   const actBrand = (extracted.brandName || '').trim();
   let brandResult: VerificationFieldResult;
 
-  if (!actBrand) {
+  if (!expBrand) {
+    brandResult = incompleteResult('brand name', actBrand);
+  } else if (!actBrand) {
     brandResult = {
       status: 'MISMATCH',
       expected: expBrand,
@@ -179,7 +197,9 @@ export function verifyLabel(
   const actClass = (extracted.classType || '').trim();
   let classResult: VerificationFieldResult;
 
-  if (!actClass) {
+  if (!expClass) {
+    classResult = incompleteResult('class/type designation', actClass);
+  } else if (!actClass) {
     classResult = {
       status: 'MISMATCH',
       expected: expClass,
@@ -229,7 +249,9 @@ export function verifyLabel(
   const actABVNum = parseABV(actABVRaw);
   let abvResult: VerificationFieldResult;
 
-  if (actABVNum === null) {
+  if (!expABVRaw) {
+    abvResult = incompleteResult('alcohol content (ABV)', actABVRaw);
+  } else if (actABVNum === null) {
     abvResult = {
       status: 'MISMATCH',
       expected: expABVRaw,
@@ -270,7 +292,9 @@ export function verifyLabel(
   // Normalization helper for volumes, e.g. "750 ml" -> "750ml", "750mL" -> "750ml"
   const normalizeVolume = (v: string) => v.toLowerCase().replace(/\s+/g, "");
 
-  if (!actNet) {
+  if (!expNet) {
+    netResult = incompleteResult('net contents', actNet);
+  } else if (!actNet) {
     netResult = {
       status: 'MISMATCH',
       expected: expNet,
@@ -375,9 +399,11 @@ export function verifyLabel(
     warningResult.status,
   ];
 
-  let overallStatus: 'MATCH' | 'WARNING' | 'MISMATCH' = 'MATCH';
+  let overallStatus: 'MATCH' | 'WARNING' | 'MISMATCH' | 'INCOMPLETE' = 'MATCH';
   if (statuses.includes('MISMATCH')) {
     overallStatus = 'MISMATCH';
+  } else if (statuses.includes('INCOMPLETE')) {
+    overallStatus = 'INCOMPLETE';
   } else if (statuses.includes('WARNING')) {
     overallStatus = 'WARNING';
   }

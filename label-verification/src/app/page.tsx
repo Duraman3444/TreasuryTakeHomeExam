@@ -169,7 +169,7 @@ export default function Home() {
       >
         <div style={{ maxWidth: "1280px", margin: "0 auto", display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "1rem" }}>
           <span>Alcohol and Tobacco Tax and Trade Bureau (TTB) — Compliance Operations Prototype</span>
-          <span>Powered by Gemini 1.5 Flash • Latency Target &lt; 5.0s</span>
+          <span>Powered by Gemini 2.5 Flash • Latency Target &lt; 5.0s</span>
         </div>
       </footer>
     </div>

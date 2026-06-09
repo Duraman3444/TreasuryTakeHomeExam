@@ -37,19 +37,29 @@ This document explains the technical choices, architecture decisions, and core a
 * **Rationale**:
   * **Pure LLM Verification Risk**: LLMs can hallucinate or fail to catch literal, word-for-word discrepancies in long texts. For example, a minor spelling mistake in the Surgeon General's warning might be overlooked by an LLM trying to check compliance semantically.
   * **Hybrid Solution**:
-    1. Use a multimodal LLM (`gemini-2.0-flash` or `gemini-1.5-flash`) to perform high-fidelity visual OCR, extract structured fields (Brand Name, ABV, Net Contents, raw Government Warning), and detect visual hierarchy.
+    1. Use a multimodal LLM (`gemini-2.5-flash`, run at `temperature: 0` for deterministic extraction) to perform high-fidelity visual OCR, extract structured fields (Brand Name, ABV, Net Contents, raw Government Warning), and detect visual hierarchy.
     2. Pass these structured values to a deterministic JavaScript engine that checks:
        * **Exact Word-for-Word Warning Text** (using character-by-character string comparison).
        * **Casing of Key Substrings** (e.g., checking if "GOVERNMENT WARNING:" is in all caps).
        * **Numerical ABV match** (using a regex parser to resolve "40% alc/vol" vs "40% ABV").
   * This guarantees 100% accuracy and auditable reasons for failures (e.g., "Mismatched character at index 45 of warning text").
 
-### LLM Model Selection: Gemini 2.0 Flash / Gemini 1.5 Flash
-* **Chosen**: Gemini Flash series
+### LLM Model Selection: Gemini 2.5 Flash
+* **Chosen**: `gemini-2.5-flash` (Gemini Flash series)
 * **Alternatives Considered**: Gemini Pro, Tesseract OCR + GPT-4o
 * **Rationale**:
-  * **Performance & Speed**: Sarah Chen noted that if the system takes longer than 5 seconds, agents will revert to manual reviews. Gemini Flash has sub-second to 2-second processing times for image input, leaving ample budget for network and UI rendering.
+  * **Performance & Speed**: Sarah Chen noted that if the system takes longer than 5 seconds, agents will revert to manual reviews. Gemini Flash targets a 2–5 second round trip for image input, leaving budget for network and UI rendering.
   * **Cost & Multi-modal Capability**: Traditional OCR (like Tesseract) struggles with curved text, bad angles, stylized fonts, and low contrast on actual bottles. Gemini's native multimodal capabilities handle these real-world photo imperfections seamlessly.
+  * **Model migration note**: the prototype originally targeted `gemini-1.5-flash`, but that model has been retired from the public `v1beta` `generateContent` endpoint and now returns `404`. We migrated to `gemini-2.5-flash` (verified working). `gemini-2.0-flash` is also code-compatible but had **zero free-tier quota** on the test key, so `2.5-flash` is the default.
+
+### Compliance Status Model: MATCH / WARNING / MISMATCH / INCOMPLETE
+* The engine returns one of four per-field statuses. `INCOMPLETE` was added after live testing: when an agent leaves a COLA form field blank, the engine no longer emits a misleading `MISMATCH` (or a false "partial match" `WARNING`). It surfaces what the AI actually read from the label and prompts the agent to complete the form. `INCOMPLETE` outranks `WARNING` but not `MISMATCH` in the overall verdict, and it never auto-approves.
+
+### Deterministic Extraction (`temperature: 0`)
+* Both providers are called at `temperature: 0` so the same label yields the same extracted fields on every run — important for an auditable compliance tool (early testing showed the model varying how much of the class/type designation it returned between runs).
+
+### Provider Routing (known sharp edge)
+* The backend selects Claude whenever `CLAUDE_API_KEY`/`ANTHROPIC_API_KEY` is present and otherwise defaults to Gemini. **A non-empty placeholder Claude value will hijack routing** and cause `401` errors, so the shipped `.env.example` keeps the Claude key commented out. A future hardening pass should validate the key format (`sk-ant-` prefix, non-placeholder) before selecting Claude.
 
 ---
 

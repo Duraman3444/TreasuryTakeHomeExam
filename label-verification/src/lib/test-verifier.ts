@@ -72,6 +72,25 @@ function testVerifier() {
   assert(reportBadWarning.overallStatus === "MISMATCH", "Should reject if warning prefix is title-case");
   assert(reportBadWarning.fields.governmentWarning.status === "MISMATCH", "Warning status should be MISMATCH");
   assert(reportBadWarning.fields.governmentWarning.message.includes("ALL CAPS"), "Should flag ALL CAPS requirement");
+
+  // Test case 4: Blank COLA form fields should be INCOMPLETE, not MISMATCH/WARNING
+  const blankForm = {
+    brandName: "",
+    classType: "",
+    abv: "",
+    netContents: "",
+    governmentWarning: STANDARD_GOVERNMENT_WARNING_FULL,
+  };
+  const reportBlank = verifyLabel(blankForm, extractedExact);
+  assert(reportBlank.overallStatus === "INCOMPLETE", "Overall status should be INCOMPLETE when form fields are blank");
+  assert(reportBlank.fields.brandName.status === "INCOMPLETE", "Blank brand name should be INCOMPLETE, not MISMATCH");
+  assert(reportBlank.fields.classType.status === "INCOMPLETE", "Blank class/type should be INCOMPLETE, not a false partial-match WARNING");
+  assert(reportBlank.fields.abv.status === "INCOMPLETE", "Blank ABV should be INCOMPLETE");
+  assert(!reportBlank.fields.abv.message.includes("null"), "Blank ABV message must not contain the word 'null'");
+  assert(reportBlank.fields.brandName.actual === "OLD TOM DISTILLERY", "Should still surface what the AI read from the label");
+  // A blank field must not poison overall status when a real mismatch also exists (MISMATCH dominates)
+  const reportBlankPlusMismatch = verifyLabel(blankForm, { ...extractedExact, abv: "12% Alc./Vol." });
+  assert(reportBlankPlusMismatch.fields.abv.status === "INCOMPLETE", "Blank form ABV stays INCOMPLETE regardless of label value");
 }
 
 function runAllTests() {
