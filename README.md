@@ -5,7 +5,7 @@ An interactive, serverless prototype designed for TTB (Alcohol and Tobacco Tax a
 This standalone proof-of-concept leverages **Google Gemini 2.5 Flash** or **Anthropic Claude 3.5 Sonnet** for high-fidelity visual OCR text extraction, paired with a deterministic Javascript verification engine for legal rule matching.
 
 ### 🔗 Live Demo
-**[https://treasury-take-home-exam-wvw4.vercel.app](https://treasury-take-home-exam-wvw4.vercel.app)**
+**[https://treasury-take-home-exam.vercel.app](https://treasury-take-home-exam.vercel.app)**
 
 Deployed on Vercel with a server-side Gemini API key — no setup required to try it. Use the **Single Application review** tab (load a preset and press Verify) or the **Batch importer queue** tab (upload a CSV + label images).
 
@@ -80,14 +80,11 @@ graph TD
 
 ## 3. Environment Variables Configuration
 
-The application is built to be highly flexible. You can provide your API keys in two different ways:
+The API key is read **server-side** from the environment — it is never exposed to the browser:
 
-1.  **Server-Side Environment File (`.env.local`)**:
-    *   Set `GEMINI_API_KEY` (starts with `AIzaSy...`) OR `CLAUDE_API_KEY` (starts with `sk-ant-...`) inside `label-verification/.env.local`.
-    *   When the user runs verification, the backend automatically uses these keys.
-2.  **Client-Side UI Settings Panel**:
-    *   Paste your key directly into the **API Settings** input field in the browser UI and click **Save Key**.
-    *   The key is stored in your browser's local cache (`localStorage`) and overrides server environment variables for quick debugging.
+*   Set `GEMINI_API_KEY` (starts with `AIza...`) **or** `CLAUDE_API_KEY` (starts with `sk-ant-...`) inside `label-verification/.env.local` for local development, or as a project Environment Variable on the host (e.g. Vercel) for the deployed app.
+*   The backend selects the provider from whichever key is present (Claude if a `CLAUDE_API_KEY`/`ANTHROPIC_API_KEY` is set, otherwise Gemini), so set **only one**.
+*   The deployed demo ships with a server-side `GEMINI_API_KEY`, so end users don't enter anything.
 
 ---
 
@@ -101,7 +98,7 @@ The application is built to be highly flexible. You can provide your API keys in
 | AI / OCR (alt) | **Anthropic Claude 3.5 Sonnet** via REST `fetch` | Drop-in alternate provider |
 | Compliance logic | **Custom TypeScript engine** (`src/lib/verifier.ts`) | Deterministic rule matching + LCS word diff |
 | Icons | **lucide-react** | Interface iconography |
-| Styling | **CSS custom properties** + inline styles (Tailwind v4 imported) | Glassmorphism design system, high-contrast a11y |
+| Styling | **CSS custom properties** + inline styles | Light, high-contrast USWDS-inspired federal theme |
 | Tooling | **Node.js**, **npm**, **ESLint 9** | Build, dependency, and lint tooling |
 | Test labels | AI image generation / scripted PNGs | Synthetic compliant & non-compliant samples |
 

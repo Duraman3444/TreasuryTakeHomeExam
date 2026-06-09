@@ -6,7 +6,7 @@ This checklist outlines the development phases for the standalone proof-of-conce
 
 ### **Project Status Summary (Updated: June 9, 2026)**
 *   **Current Status**: **Complete & deployed.** Core single-label and batch verification both verified end-to-end against the live Gemini API, and the app is live on Vercel.
-*   **Live demo**: https://treasury-take-home-exam-wvw4.vercel.app
+*   **Live demo**: https://treasury-take-home-exam.vercel.app
 *   **Accomplished Tasks**:
     1.  **Phase 4 (Batch Import)**: Full multi-image drag-and-drop batch upload and CSV form-metadata parser, with filename matching, "Unlisted (not in CSV)" handling, visual diagnostics, template downloader, and a concurrency-limited queue runner. **Verified end-to-end** with a 5-item CSV + images (correct set → all MATCH; error set → all MISMATCH, varied error types).
     2.  **Phase 5 (Accessibility / UX)**: Restyled to a light, high-contrast **USWDS-inspired federal theme** (navy/blue palette, flat cards, no gradients/glows) suited to the 50+ agent demographic, with `:focus-visible` keyboard indicators.

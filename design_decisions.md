@@ -25,7 +25,8 @@ This document explains the technical choices, architecture decisions, and core a
 * **Chosen**: Vanilla CSS
 * **Alternatives Considered**: Tailwind CSS
 * **Rationale**:
-  * Tailwind CSS can lead to cluttered JSX and is sometimes restricted by agency policies. Vanilla CSS allows us to build a custom, highly customized design system (glassmorphism, subtle micro-animations, high-contrast layouts) from scratch, ensuring a premium feel and absolute layout control.
+  * Tailwind CSS can lead to cluttered JSX and is sometimes restricted by agency policies. Vanilla CSS (custom properties + inline styles) gives absolute layout control and a centralized token system.
+  * **Final visual direction**: a light, high-contrast theme inspired by the **U.S. Web Design System (USWDS)** — the federal standard — rather than a dark "modern SaaS" look. This was a deliberate pivot to match the actual audience: federal compliance agents, half of them 50+, per Sarah's "something my mother could figure out" benchmark. Gradients, glows, and glassmorphism were removed in favor of a navy/blue palette, flat bordered cards, and squared corners that read as a credible government tool.
 
 ---
 

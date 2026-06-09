@@ -4,24 +4,21 @@ This guide provides step-by-step instructions on how to use the portal to verify
 
 ---
 
-## Step 1: Authentication & Setup
+## Step 1: Access the App
 
-Before verifying labels, you must supply an API key for the compliance engines (Google Gemini or Anthropic Claude).
+The compliance engine uses a **server-side** API key (Google Gemini or Anthropic Claude) — agents don't enter anything.
 
 ```mermaid
 flowchart TD
-    A[Start Application] --> B{Choose Key Method}
-    B -->|Option 1: Server Config| C[Add GEMINI_API_KEY or CLAUDE_API_KEY to label-verification/.env.local]
-    B -->|Option 2: Browser UI| D[Enter key in 'API Settings' panel at top of screen]
-    D --> E[Click 'Save Key' to cache in localStorage]
-    C --> F[Access App at http://localhost:3000]
-    E --> F
+    A[Start] --> B{Where are you running it?}
+    B -->|Deployed demo| C[Open the live URL — key is already configured server-side]
+    B -->|Local development| D[Add GEMINI_API_KEY to label-verification/.env.local, then npm run dev]
+    C --> F[Use the dashboard]
+    D --> F
 ```
 
-1. Open your browser and navigate to **[http://localhost:3000](http://localhost:3000)**.
-2. Locate the **API Settings** panel at the top of the dashboard.
-3. Enter your **Gemini Key** (starts with `AIzaSy...`) or **Claude Key** (starts with `sk-ant-...`) and click **Save Key**. 
-4. *Alternatively*, create a `.env.local` file inside `label-verification/` and define your keys (e.g. `CLAUDE_API_KEY=your_key_here`).
+- **Live demo**: just open **[https://treasury-take-home-exam.vercel.app](https://treasury-take-home-exam.vercel.app)** — the key is configured on the server, so you can start verifying immediately.
+- **Local development**: create `label-verification/.env.local` with a single `GEMINI_API_KEY=AIza...` (see the README), run `npm run dev`, and open **[http://localhost:3000](http://localhost:3000)**.
 
 ---
 
