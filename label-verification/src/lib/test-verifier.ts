@@ -80,8 +80,9 @@ function runAllTests() {
     testDiffWords();
     testVerifier();
     console.log("\n[SUCCESS] All compliance engine tests passed successfully!\n");
-  } catch (error: any) {
-    console.error(`\n[FAIL] Test suite failed: ${error.message}\n`);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error(`\n[FAIL] Test suite failed: ${message}\n`);
     process.exit(1);
   }
 }
