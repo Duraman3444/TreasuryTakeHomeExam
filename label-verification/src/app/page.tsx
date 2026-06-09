@@ -1,13 +1,11 @@
 "use client";
 
 import React, { useState } from "react";
-import SettingsPanel from "@/components/SettingsPanel";
 import VerificationDashboard from "@/components/VerificationDashboard";
 import BatchDashboard from "@/components/BatchDashboard";
 import { ShieldCheck, HelpCircle } from "lucide-react";
 
 export default function Home() {
-  const [apiKey, setApiKey] = useState("");
   const [activeTab, setActiveTab] = useState<"single" | "batch">("single");
 
   return (
@@ -142,14 +140,11 @@ export default function Home() {
           </div>
         </div>
 
-        {/* API Settings Section */}
-        <SettingsPanel onKeyChange={(key) => setApiKey(key)} />
-
         {/* Tab workspaces */}
         {activeTab === "single" ? (
-          <VerificationDashboard apiKey={apiKey} />
+          <VerificationDashboard />
         ) : (
-          <BatchDashboard apiKey={apiKey} />
+          <BatchDashboard />
         )}
       </main>
 

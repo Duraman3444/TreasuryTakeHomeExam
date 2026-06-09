@@ -32,11 +32,7 @@ interface BatchItem {
   unmatched?: boolean; // image uploaded but no matching CSV row (no reference data to verify against)
 }
 
-interface BatchDashboardProps {
-  apiKey: string;
-}
-
-export default function BatchDashboard({ apiKey }: BatchDashboardProps) {
+export default function BatchDashboard() {
   const [items, setItems] = useState<BatchItem[]>([]);
   const [processing, setProcessing] = useState(false);
   const [concurrency, setConcurrency] = useState(2);
@@ -510,8 +506,7 @@ export default function BatchDashboard({ apiKey }: BatchDashboardProps) {
           body: JSON.stringify({
             image: currentItem.imageData,
             imageType: "image/png",
-            formValues: currentItem.formValues,
-            apiKeyOverride: apiKey
+            formValues: currentItem.formValues
           })
         });
 

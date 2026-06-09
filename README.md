@@ -4,6 +4,11 @@ An interactive, serverless prototype designed for TTB (Alcohol and Tobacco Tax a
 
 This standalone proof-of-concept leverages **Google Gemini 2.5 Flash** or **Anthropic Claude 3.5 Sonnet** for high-fidelity visual OCR text extraction, paired with a deterministic Javascript verification engine for legal rule matching.
 
+### 🔗 Live Demo
+**[https://treasury-take-home-exam-wvw4.vercel.app](https://treasury-take-home-exam-wvw4.vercel.app)**
+
+Deployed on Vercel with a server-side Gemini API key — no setup required to try it. Use the **Single Application review** tab (load a preset and press Verify) or the **Batch importer queue** tab (upload a CSV + label images).
+
 ---
 
 ## 1. Technical Architecture & System Flow

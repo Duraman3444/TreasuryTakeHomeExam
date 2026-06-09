@@ -38,11 +38,7 @@ const overallHeadline = (s: FieldStatus) =>
   : s === "INCOMPLETE" ? "INCOMPLETE — REVIEW REQUIRED"
   : "NON-COMPLIANT";
 
-interface VerificationDashboardProps {
-  apiKey: string;
-}
-
-export default function VerificationDashboard({ apiKey }: VerificationDashboardProps) {
+export default function VerificationDashboard() {
   const [selectedSampleId, setSelectedSampleId] = useState<string>(LABEL_SAMPLES[0].id);
   const [formValues, setFormValues] = useState(LABEL_SAMPLES[0].formValues);
   const [labelValues, setLabelValues] = useState(LABEL_SAMPLES[0].labelValues);
@@ -330,7 +326,6 @@ export default function VerificationDashboard({ apiKey }: VerificationDashboardP
           imageType,
           // blank reference — we only want the AI's raw extraction back, not a comparison
           formValues: { brandName: "", classType: "", abv: "", netContents: "", governmentWarning: "" },
-          apiKeyOverride: apiKey,
         }),
       });
 
@@ -383,7 +378,6 @@ export default function VerificationDashboard({ apiKey }: VerificationDashboardP
           image: imageData,
           imageType,
           formValues,
-          apiKeyOverride: apiKey,
         }),
       });
 
@@ -912,11 +906,6 @@ export default function VerificationDashboard({ apiKey }: VerificationDashboardP
                 )}
               </button>
               
-              {!apiKey && (
-                <p style={{ fontSize: "0.7rem", color: "var(--text-muted)", textAlign: "center", marginTop: "0.25rem" }}>
-                  * Note: If no API key is entered, server-side environment variables will be used.
-                </p>
-              )}
             </div>
           </div>
         </div>
@@ -984,7 +973,6 @@ export default function VerificationDashboard({ apiKey }: VerificationDashboardP
               <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.5rem" }}>
                 <button
                   onClick={handleVerify}
-                  disabled={!apiKey && !process.env.NEXT_PUBLIC_GEMINI_API_KEY}
                   style={{
                     padding: "0.5rem 1rem",
                     backgroundColor: "var(--primary-glow)",
