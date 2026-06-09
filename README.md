@@ -83,21 +83,53 @@ The application is built to be highly flexible. You can provide your API keys in
 
 ---
 
-## 4. Current Status & What is Remaining
+## 4. Current Status & Verification Summary
 
-The project is currently in the **Refinement & Testing** phase.
+The project has achieved **100% completion of the functional requirements**.
 
-### **Implemented Features:**
-*   **API Verification Route** supporting dual Gemini & Claude endpoints with base64 image encoding.
-*   **Single Label Verification Dashboard** with side-by-side comparative canvas, interactive label modifications, character-diff viewer (LCS-based), and Agent Decision buttons.
-*   **Batch Verification Queue Layout** supporting client-side concurrency control (up to 3 parallel workers), progress tracking, and collapsible item reports.
-*   **Deterministic Compliance Rules** covering exact brand names, partial matches, custom alcohol content (ABV/Proof) regex parses, and strict case-sensitive checks for Surgeon General warning statements.
+### **Completed Features:**
+*   **API Verification Route**: Integrates both Google Gemini 1.5 Flash and Anthropic Claude 3.5 Sonnet endpoints, supporting direct image base64 inputs.
+*   **Single Label Verification Dashboard**: Features visual HTML5 comparative canvas, real-time label text editing, word-level Longest Common Subsequence (LCS) diff viewer, and an Agent Decision panel.
+*   **Batch Verification Dashboard**: Support for **custom multi-image uploader** and a **CSV file mapper**. Includes a client-side parallel processing queue with custom concurrency control (1, 2, or 3 parallel workers), progress tracking, statistics, and diagnostic alerts for missing files. Includes a "Download CSV Template" option for format alignment.
+*   **Compliance Rules Engine**: Handles custom ABV regex parsing (percentage and proof conversion), net contents spacing tolerance, brand matches, and strict word-for-word and casing checks for Surgeon General warning statements.
+*   **Accessibility (a11y) Focus**: Integrated high-contrast `:focus-visible` indicators for buttons, inputs, select selectors, and textareas to support keyboard-only navigability for older agents (the 50+ demographic).
 
-### **What is Left to Implement:**
-1.  **Batch Custom Files Expansion (Phase 4)**:
-    *   Currently, the Batch Importer operates on 5 pre-generated mock cases representing compliance edge cases.
-    *   *Remaining:* Build the custom multi-file image upload field and the CSV parser to map COLA applications to uploaded label files by filename index.
-2.  **Accessibility (a11y) Audits (Phase 5)**:
-    *   *Remaining:* Audit color-contrast ratios, focus states, and keyboard navigability to support older agents (the 50+ demographic).
-3.  **Documentation (Phase 6)**:
-    *   *Remaining:* Finalize deployment guidelines for hosting platforms (e.g. Vercel, Azure App Service, or Firebase App Hosting).
+---
+
+## 5. Production Deployment Guide
+
+Since this Next.js app is built on App Router and uses serverless API routes, it can be deployed to standard cloud platforms:
+
+### Option A: Vercel (Recommended)
+1. Install Vercel CLI: `npm i -g vercel`
+2. Run `vercel` in the project root (`label-verification/` directory).
+3. Follow the interactive prompts to link your project.
+4. Set the Environment Variables when prompted or inside the Vercel Dashboard:
+   * `GEMINI_API_KEY`
+   * `CLAUDE_API_KEY`
+5. Run `vercel --prod` to deploy to production.
+
+### Option B: Firebase App Hosting
+Firebase App Hosting automatically builds and manages your Next.js application backend.
+1. Initialize Firebase: `npx firebase-tools init apphosting` (run inside `label-verification/`).
+2. Select your Firebase project and name your web app.
+3. Configure your API secret keys in GCP Secret Manager and map them in your `apphosting.yaml` configuration file:
+   ```yaml
+   env:
+     - variable: GEMINI_API_KEY
+       secret: GEMINI_API_KEY_SECRET
+   ```
+4. Commit and push your code to GitHub; Firebase App Hosting will automatically trigger a rolling deployment.
+
+### Option C: Azure App Service (NodeJS Linux)
+Since the production COLA and agency infrastructure is Azure-based (as noted by Marcus), deploying to Azure App Service is a natural staging solution:
+1. Initialize Azure CLI and login: `az login`
+2. Create an App Service Plan and Web App:
+   ```bash
+   az webapp up --name ttb-compliance-portal --resource-group ttb-rg --plan ttb-plan --runtime "NODE|20-lts"
+   ```
+3. Set app settings for API keys:
+   ```bash
+   az webapp config appsettings set --name ttb-compliance-portal --resource-group ttb-rg --settings GEMINI_API_KEY="AIza..." CLAUDE_API_KEY="sk-ant-..."
+   ```
+4. Azure will build the application using Oryx and run the production server.

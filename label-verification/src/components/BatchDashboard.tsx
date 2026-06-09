@@ -3,7 +3,8 @@
 import React, { useState, useRef } from "react";
 import { 
   Play, RefreshCw, Layers, CheckCircle2, AlertTriangle, 
-  XCircle, ChevronDown, ChevronUp, Clock, AlertCircle, FileSpreadsheet
+  XCircle, ChevronDown, ChevronUp, Clock, AlertCircle, FileSpreadsheet,
+  Upload, FileImage, Download, Trash2
 } from "lucide-react";
 import { STANDARD_GOVERNMENT_WARNING_FULL, VerificationReport, VerificationFieldResult, DiffPart } from "@/lib/verifier";
 
@@ -39,7 +40,248 @@ export default function BatchDashboard({ apiKey }: BatchDashboardProps) {
   const [processing, setProcessing] = useState(false);
   const [concurrency, setConcurrency] = useState(2);
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
+  
+  // Custom uploaded files state
+  const [customImages, setCustomImages] = useState<{ name: string; data: string }[]>([]);
+  const [csvData, setCsvData] = useState<{ filename: string; brandName: string; classType: string; abv: string; netContents: string; governmentWarning: string }[]>([]);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [isDragActiveImages, setIsDragActiveImages] = useState(false);
+  const [isDragActiveCsv, setIsDragActiveCsv] = useState(false);
+
   const hiddenCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const imagesInputRef = useRef<HTMLInputElement | null>(null);
+  const csvInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Parse standard CSV file (supports quoted items containing commas)
+  const parseCSVText = (text: string) => {
+    try {
+      const lines = text.split(/\r?\n/);
+      if (lines.length < 2) {
+        throw new Error("CSV file is empty or missing data.");
+      }
+
+      const cleanHeader = (h: string) => h.replace(/["']/g, "").trim().toLowerCase();
+      const headers = lines[0].split(",").map(cleanHeader);
+
+      const getIndex = (aliases: string[]) => {
+        return headers.findIndex(h => aliases.some(alias => h.includes(alias)));
+      };
+
+      const fileIdx = getIndex(["file", "image", "path"]);
+      const brandIdx = getIndex(["brand", "company"]);
+      const classIdx = getIndex(["class", "type", "category"]);
+      const abvIdx = getIndex(["abv", "alcohol", "proof", "strength"]);
+      const netIdx = getIndex(["net", "volume", "content", "size"]);
+      const warnIdx = getIndex(["warning", "government", "surgeon"]);
+
+      if (fileIdx === -1 || brandIdx === -1 || classIdx === -1 || abvIdx === -1 || netIdx === -1) {
+        throw new Error("Missing required headers. CSV must have columns mapping to: filename, brandName, classType, abv, netContents");
+      }
+
+      const parsedRows = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+
+        // Split by commas outside of double quotes
+        const tokens = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+        
+        const cleanVal = (val: string) => {
+          if (!val) return "";
+          return val.replace(/^["']|["']$/g, "").trim();
+        };
+
+        const filename = cleanVal(tokens[fileIdx]);
+        const brandName = cleanVal(tokens[brandIdx]);
+        const classType = cleanVal(tokens[classIdx]);
+        const abv = cleanVal(tokens[abvIdx]);
+        const netContents = cleanVal(tokens[netIdx]);
+        const governmentWarning = warnIdx !== -1 && tokens[warnIdx] ? cleanVal(tokens[warnIdx]) : STANDARD_GOVERNMENT_WARNING_FULL;
+
+        if (filename && brandName) {
+          parsedRows.push({
+            filename,
+            brandName,
+            classType,
+            abv,
+            netContents,
+            governmentWarning: governmentWarning || STANDARD_GOVERNMENT_WARNING_FULL
+          });
+        }
+      }
+      return parsedRows;
+    } catch (err: unknown) {
+      console.error(err);
+      throw new Error(err instanceof Error ? err.message : "Failed to parse CSV file formatting.");
+    }
+  };
+
+  // Build queue items from image and CSV matching
+  const matchAndBuildBatchItems = (
+    images: { name: string; data: string }[],
+    csvRows: { filename: string; brandName: string; classType: string; abv: string; netContents: string; governmentWarning: string }[]
+  ) => {
+    const batchItems: BatchItem[] = csvRows.map((row, idx) => {
+      const cleanName = (n: string) => n.toLowerCase().split(".")[0].trim();
+      const rowClean = cleanName(row.filename);
+
+      // Find matching base64 image
+      const matchedImg = images.find(img => 
+        cleanName(img.name) === rowClean || 
+        img.name.toLowerCase().trim() === row.filename.toLowerCase().trim()
+      );
+
+      return {
+        id: `custom-batch-${idx}-${Date.now()}`,
+        name: `Application #${10000 + idx} (${row.filename})`,
+        formValues: {
+          brandName: row.brandName,
+          classType: row.classType,
+          abv: row.abv,
+          netContents: row.netContents,
+          governmentWarning: row.governmentWarning
+        },
+        labelValues: {
+          brandName: row.brandName,
+          classType: row.classType,
+          abv: row.abv,
+          netContents: row.netContents,
+          governmentWarning: row.governmentWarning
+        },
+        imageData: matchedImg ? matchedImg.data : "",
+        status: matchedImg ? "pending" : "failed",
+        report: null,
+        errorMessage: matchedImg ? null : "Missing corresponding image file in uploaded labels."
+      };
+    });
+
+    setItems(batchItems);
+  };
+
+  // Upload handlers
+  const handleImageUpload = (files: FileList) => {
+    setUploadError(null);
+    const loadedImages: { name: string; data: string }[] = [];
+    let processed = 0;
+    const targetFiles = Array.from(files).filter(f => f.type.startsWith("image/"));
+
+    if (targetFiles.length === 0) {
+      setUploadError("No valid image files detected. Choose PNG or JPEG.");
+      return;
+    }
+
+    targetFiles.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        if (e.target?.result) {
+          loadedImages.push({
+            name: file.name,
+            data: e.target.result as string
+          });
+        }
+        processed++;
+        if (processed === targetFiles.length) {
+          setCustomImages(prev => {
+            const updated = [...prev];
+            loadedImages.forEach(newImg => {
+              const dupIdx = updated.findIndex(img => img.name === newImg.name);
+              if (dupIdx !== -1) {
+                updated[dupIdx] = newImg;
+              } else {
+                updated.push(newImg);
+              }
+            });
+            if (csvData.length > 0) {
+              matchAndBuildBatchItems(updated, csvData);
+            }
+            return updated;
+          });
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleCsvUpload = (file: File) => {
+    setUploadError(null);
+    if (!file.name.endsWith(".csv")) {
+      setUploadError("Invalid file type. Please upload a .csv file.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      if (e.target?.result) {
+        try {
+          const parsed = parseCSVText(e.target.result as string);
+          setCsvData(parsed);
+          matchAndBuildBatchItems(customImages, parsed);
+        } catch (err: unknown) {
+          setUploadError(err instanceof Error ? err.message : "Failed parsing CSV content.");
+        }
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  // Download template CSV file helper
+  const downloadCsvTemplate = () => {
+    const csvContent = 
+      "filename,brandName,classType,abv,netContents,governmentWarning\n" +
+      "old_tom.png,OLD TOM DISTILLERY,Kentucky Straight Bourbon Whiskey,45% Alc./Vol.,750 mL,\n" +
+      "stones_throw.jpg,Stone's Throw,Dry Gin,40% ABV,1 L,\n" +
+      "highland_mist.png,HIGHLAND MIST,Single Malt Scotch Whisky,43% Alc./Vol.,700 mL,";
+    
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", "cola_batch_template.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Drag and Drop Images
+  const handleImagesDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setIsDragActiveImages(true);
+    } else if (e.type === "dragleave") {
+      setIsDragActiveImages(false);
+    }
+  };
+
+  const handleImagesDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragActiveImages(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleImageUpload(e.dataTransfer.files);
+    }
+  };
+
+  // Drag and Drop CSV
+  const handleCsvDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setIsDragActiveCsv(true);
+    } else if (e.type === "dragleave") {
+      setIsDragActiveCsv(false);
+    }
+  };
+
+  const handleCsvDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragActiveCsv(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleCsvUpload(e.dataTransfer.files[0]);
+    }
+  };
 
   // Generate a mock batch of labels for testing
   const generateMockBatch = () => {
@@ -223,15 +465,17 @@ export default function BatchDashboard({ apiKey }: BatchDashboardProps) {
     if (items.length === 0) return;
     setProcessing(true);
 
-    // Filter items that need verification
     const pendingItems = items.filter(item => item.status === "pending" || item.status === "failed");
     const queue = [...pendingItems];
 
     const runWorker = async (): Promise<void> => {
       if (queue.length === 0) return;
       const currentItem = queue.shift()!;
+      if (!currentItem.imageData) {
+        await runWorker();
+        return;
+      }
       
-      // Update status to verifying
       setItems(prev => prev.map(it => it.id === currentItem.id ? { ...it, status: "verifying" } : it));
 
       try {
@@ -267,14 +511,17 @@ export default function BatchDashboard({ apiKey }: BatchDashboardProps) {
             : it
         ));
       } finally {
-        // Recurse to handle next item in queue
         await runWorker();
       }
     };
 
-    // Spawn workers based on concurrency limit
     const workers = [];
-    const numWorkers = Math.min(concurrency, queue.length);
+    const numWorkers = Math.min(concurrency, queue.filter(q => q.imageData).length);
+    if (numWorkers === 0) {
+      setProcessing(false);
+      return;
+    }
+
     for (let i = 0; i < numWorkers; i++) {
       workers.push(runWorker());
     }
@@ -285,11 +532,13 @@ export default function BatchDashboard({ apiKey }: BatchDashboardProps) {
 
   const clearBatch = () => {
     setItems([]);
+    setCustomImages([]);
+    setCsvData([]);
+    setUploadError(null);
     setProcessing(false);
     setExpandedItemId(null);
   };
 
-  // Statistics
   const totalItems = items.length;
   const completedItems = items.filter(i => i.status === "success").length;
   const failedItems = items.filter(i => i.status === "failed").length;
@@ -508,26 +757,270 @@ export default function BatchDashboard({ apiKey }: BatchDashboardProps) {
 
       {/* Queue items list */}
       {items.length === 0 ? (
-        <div 
-          className="glass-panel" 
-          style={{ 
-            display: "flex", 
-            flexDirection: "column", 
-            alignItems: "center", 
-            justifyContent: "center", 
-            minHeight: "250px", 
-            gap: "1rem", 
-            textAlign: "center",
-            padding: "2rem"
-          }}
-        >
-          <Layers size={48} style={{ color: "var(--text-muted)", strokeWidth: 1.2 }} />
-          <div>
-            <h4 style={{ fontSize: "1rem", fontWeight: "600" }}>Batch Queue Empty</h4>
-            <p style={{ fontSize: "0.825rem", color: "var(--text-muted)", maxWidth: "340px", margin: "0.25rem auto 0" }}>
-              Load the sample batch dataset above, or configure multiple CSV applications to initiate batch testing.
-            </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+          {/* Main Drag Drop Areas */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1.5rem" }}>
+            
+            {/* Box 1: Multiple Label Images */}
+            <div 
+              className="glass-panel" 
+              style={{ 
+                display: "flex", 
+                flexDirection: "column", 
+                gap: "1rem",
+                border: isDragActiveImages ? "2px dashed var(--primary)" : "2px dashed var(--bg-tertiary)",
+                backgroundColor: isDragActiveImages ? "var(--primary-glow)" : "var(--glass-bg)",
+                transition: "all var(--transition-fast)"
+              }}
+              onDragEnter={handleImagesDrag}
+              onDragOver={handleImagesDrag}
+              onDragLeave={handleImagesDrag}
+              onDrop={handleImagesDrop}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <FileImage size={24} style={{ color: "var(--primary)" }} />
+                <h4 style={{ fontSize: "0.95rem", fontWeight: "600" }}>Upload Label Artwork Images</h4>
+              </div>
+              <p style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                Upload multiple label images (PNG, JPEG, etc.). They will be matched to COLA applications by filename.
+              </p>
+              
+              <div 
+                onClick={() => imagesInputRef.current?.click()}
+                style={{ 
+                  flex: 1,
+                  minHeight: "120px", 
+                  display: "flex", 
+                  flexDirection: "column", 
+                  alignItems: "center", 
+                  justifyContent: "center",
+                  border: "1px dashed var(--bg-tertiary)",
+                  borderRadius: "var(--radius-sm)",
+                  cursor: "pointer",
+                  backgroundColor: "rgba(15,23,42,0.2)",
+                  gap: "0.5rem",
+                  padding: "1rem"
+                }}
+              >
+                <Upload size={24} style={{ color: "var(--text-secondary)" }} />
+                <span style={{ fontSize: "0.825rem", color: "var(--text-secondary)", fontWeight: "500" }}>
+                  Drag & Drop images or <span style={{ color: "var(--primary)", textDecoration: "underline" }}>browse files</span>
+                </span>
+                <input 
+                  ref={imagesInputRef}
+                  type="file" 
+                  multiple 
+                  accept="image/*"
+                  onChange={(e) => e.target.files && handleImageUpload(e.target.files)}
+                  style={{ display: "none" }}
+                />
+              </div>
+
+              {/* Uploaded Images List */}
+              {customImages.length > 0 && (
+                <div style={{ maxHeight: "150px", overflowY: "auto", borderTop: "1px solid var(--bg-tertiary)", paddingTop: "0.75rem" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.75rem", fontWeight: "600", marginBottom: "0.5rem", color: "var(--text-secondary)" }}>
+                    <span>Uploaded Labels ({customImages.length})</span>
+                    <button 
+                      onClick={() => setCustomImages([])}
+                      style={{ background: "none", border: "none", color: "var(--color-mismatch)", cursor: "pointer", fontSize: "0.7rem", textDecoration: "underline" }}
+                    >
+                      Clear All
+                    </button>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                    {customImages.map((img, i) => (
+                      <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.75rem", padding: "0.25rem 0.5rem", backgroundColor: "rgba(15,23,42,0.4)", borderRadius: "4px" }}>
+                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "80%" }}>{img.name}</span>
+                        <button 
+                          onClick={() => setCustomImages(prev => prev.filter((_, idx) => idx !== i))}
+                          style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer" }}
+                        >
+                          <Trash2 size={12} style={{ color: "var(--color-mismatch)" }} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Box 2: CSV Data File */}
+            <div 
+              className="glass-panel" 
+              style={{ 
+                display: "flex", 
+                flexDirection: "column", 
+                gap: "1rem",
+                border: isDragActiveCsv ? "2px dashed var(--primary)" : "2px dashed var(--bg-tertiary)",
+                backgroundColor: isDragActiveCsv ? "var(--primary-glow)" : "var(--glass-bg)",
+                transition: "all var(--transition-fast)"
+              }}
+              onDragEnter={handleCsvDrag}
+              onDragOver={handleCsvDrag}
+              onDragLeave={handleCsvDrag}
+              onDrop={handleCsvDrop}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <FileSpreadsheet size={24} style={{ color: "var(--primary)" }} />
+                <h4 style={{ fontSize: "0.95rem", fontWeight: "600" }}>Upload COLA Applications CSV</h4>
+              </div>
+              <p style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                Provide a CSV containing form records. Headers should map to: filename, brandName, classType, abv, netContents.
+              </p>
+              
+              <div 
+                onClick={() => csvInputRef.current?.click()}
+                style={{ 
+                  flex: 1,
+                  minHeight: "120px", 
+                  display: "flex", 
+                  flexDirection: "column", 
+                  alignItems: "center", 
+                  justifyContent: "center",
+                  border: "1px dashed var(--bg-tertiary)",
+                  borderRadius: "var(--radius-sm)",
+                  cursor: "pointer",
+                  backgroundColor: "rgba(15,23,42,0.2)",
+                  gap: "0.5rem",
+                  padding: "1rem"
+                }}
+              >
+                <FileSpreadsheet size={24} style={{ color: "var(--text-secondary)" }} />
+                <span style={{ fontSize: "0.825rem", color: "var(--text-secondary)", fontWeight: "500" }}>
+                  {csvData.length > 0 ? (
+                    <span style={{ color: "var(--color-match)", fontWeight: "bold" }}>CSV Loaded Successfully!</span>
+                  ) : (
+                    <>Drag & Drop CSV or <span style={{ color: "var(--primary)", textDecoration: "underline" }}>browse files</span></>
+                  )}
+                </span>
+                <input 
+                  ref={csvInputRef}
+                  type="file" 
+                  accept=".csv"
+                  onChange={(e) => e.target.files && handleCsvUpload(e.target.files[0])}
+                  style={{ display: "none" }}
+                />
+              </div>
+
+              {/* CSV rows overview */}
+              {csvData.length > 0 && (
+                <div style={{ borderTop: "1px solid var(--bg-tertiary)", paddingTop: "0.75rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.75rem", fontWeight: "600", color: "var(--text-secondary)" }}>
+                    <span>Application Records ({csvData.length})</span>
+                    <button 
+                      onClick={() => setCsvData([])}
+                      style={{ background: "none", border: "none", color: "var(--color-mismatch)", cursor: "pointer", fontSize: "0.7rem", textDecoration: "underline" }}
+                    >
+                      Clear CSV
+                    </button>
+                  </div>
+                  <div style={{ fontSize: "0.75rem", backgroundColor: "rgba(15,23,42,0.4)", padding: "0.5rem", borderRadius: "var(--radius-sm)", display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                    {csvData.slice(0, 3).map((row, idx) => (
+                      <div key={idx} style={{ display: "flex", justifyContent: "space-between", color: "var(--text-secondary)" }}>
+                        <span style={{ fontStyle: "italic" }}>{row.filename}</span>
+                        <span>{row.brandName}</span>
+                      </div>
+                    ))}
+                    {csvData.length > 3 && (
+                      <div style={{ textAlign: "center", fontSize: "0.7rem", color: "var(--text-muted)", marginTop: "0.25rem" }}>
+                        + {csvData.length - 3} more records
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
+
+          {/* Diagnostics and template download toolbar */}
+          <div className="glass-panel" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem", padding: "1rem" }}>
+            <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
+              <button
+                onClick={downloadCsvTemplate}
+                style={{
+                  padding: "0.5rem 0.75rem",
+                  borderRadius: "var(--radius-sm)",
+                  backgroundColor: "rgba(99, 102, 241, 0.12)",
+                  color: "var(--primary)",
+                  border: "1px solid rgba(99, 102, 241, 0.25)",
+                  fontSize: "0.75rem",
+                  fontWeight: "600",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.375rem"
+                }}
+              >
+                <Download size={14} /> Download CSV Template
+              </button>
+              
+              <button
+                onClick={generateMockBatch}
+                style={{
+                  padding: "0.5rem 0.75rem",
+                  borderRadius: "var(--radius-sm)",
+                  backgroundColor: "var(--bg-tertiary)",
+                  color: "var(--text-secondary)",
+                  border: "none",
+                  fontSize: "0.75rem",
+                  fontWeight: "600",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.375rem"
+                }}
+              >
+                Load Mock Sample Batch (5 items)
+              </button>
+            </div>
+
+            {uploadError && (
+              <div style={{ display: "flex", alignItems: "center", gap: "0.375rem", fontSize: "0.75rem", color: "var(--color-mismatch)", fontWeight: "600" }}>
+                <AlertCircle size={14} />
+                <span>{uploadError}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Diagnostic overview box if files uploaded but matching is running */}
+          {(customImages.length > 0 || csvData.length > 0) && (
+            <div className="glass-panel" style={{ display: "flex", flexDirection: "column", gap: "0.75rem", borderLeft: "4px solid var(--accent-blue)" }}>
+              <h4 style={{ fontSize: "0.875rem", fontWeight: "700" }}>Application Matching Diagnostics</h4>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "1rem", fontSize: "0.775rem" }}>
+                <div>
+                  <span style={{ color: "var(--text-secondary)" }}>Total Images Uploaded:</span>{" "}
+                  <strong>{customImages.length}</strong>
+                </div>
+                <div>
+                  <span style={{ color: "var(--text-secondary)" }}>Total CSV Records:</span>{" "}
+                  <strong>{csvData.length}</strong>
+                </div>
+                <div>
+                  <span style={{ color: "var(--text-secondary)" }}>Matched & Ready:</span>{" "}
+                  <strong style={{ color: "var(--color-match)" }}>
+                    {items.filter(it => it.imageData).length}
+                  </strong>
+                </div>
+                <div>
+                  <span style={{ color: "var(--text-secondary)" }}>Missing Images:</span>{" "}
+                  <strong style={{ color: "var(--color-warning)" }}>
+                    {items.filter(it => !it.imageData).length}
+                  </strong>
+                </div>
+              </div>
+              
+              {/* Warnings for unmatched items */}
+              {items.some(it => !it.imageData) && (
+                <div style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem", backgroundColor: "var(--color-warning-bg)", border: "1px solid var(--color-warning-border)", borderRadius: "var(--radius-sm)", padding: "0.5rem 0.75rem", fontSize: "0.725rem", color: "var(--color-warning)" }}>
+                  <AlertTriangle size={14} style={{ marginTop: "1px", flexShrink: 0 }} />
+                  <div>
+                    <strong>Missing files:</strong> Some applications in the CSV do not have matching uploaded label images. They will show as failed in the queue list below. Please upload the images containing matching filenames.
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       ) : (
         <div className="glass-panel" style={{ padding: 0, overflow: "hidden" }}>
