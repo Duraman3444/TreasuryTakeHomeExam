@@ -15,11 +15,10 @@ This checklist outlines the development phases for the standalone proof-of-conce
 *   **Live-Testing Fixes (post-integration verification):**
     1.  Migrated the Gemini model from retired `gemini-1.5-flash` (returns `404`) to **`gemini-2.5-flash`**; verified end-to-end.
     2.  Upgraded **Next.js 15.1.0 → 15.5.19** to patch CVE-2025-66478 (Vercel blocks deploys on the vulnerable version).
-    3.  Set **`temperature: 0`** on both providers for deterministic, auditable extraction.
+    3.  Set **`temperature: 0`** on Gemini for deterministic, auditable extraction.
     4.  Added the **`INCOMPLETE`** status so blank COLA form fields no longer produce misleading `MISMATCH`/`WARNING`/`"null%"`; the form auto-clears on custom image upload.
     5.  Added **retry-with-backoff** on transient `429`/`503` (unit-tested) for resilience under load.
     6.  Added an **"Autofill from label"** button (AI reads fields off the image as a starting point) and removed the API-key settings box (the deployed app uses the env key automatically).
-    7.  Documented the **provider-routing sharp edge** (placeholder Claude key hijacks routing) and commented out the Claude key in `.env.example` by default.
 
 *   **Known limitations (documented trade-offs):**
     *   **Imperfect-image handling** (extreme angle/glare/lighting) relies entirely on the multimodal model and has not been formally benchmarked — flagged as out of scope per the brief.
@@ -35,7 +34,7 @@ This checklist outlines the development phases for the standalone proof-of-conce
 
 ## Phase 2: AI & Compliance Engine (Backend API)
 - [x] Create `/api/verify` endpoint to process image uploads and form fields
-- [x] Integrate Gemini & Claude Multimodal API (automatically switching based on key/env format)
+- [x] Integrate Gemini Multimodal API
 - [x] Design robust prompt to extract fields: Brand Name, ABV, Net Contents, Class/Type, and raw Government Warning text
 - [x] Implement strict verification logic:
   - [x] **Exact String Match**: Compare brand name, class/type, net contents, and bottler name/address (handling minor casing discrepancies as warnings; partial matches on addresses)

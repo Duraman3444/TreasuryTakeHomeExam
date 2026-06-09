@@ -6,7 +6,7 @@ This guide provides step-by-step instructions on how to use the portal to verify
 
 ## Step 1: Access the App
 
-The compliance engine uses a **server-side** API key (Google Gemini or Anthropic Claude) — agents don't enter anything.
+The compliance engine uses a **server-side** API key (Google Gemini) — agents don't enter anything.
 
 ```mermaid
 flowchart TD
@@ -31,7 +31,7 @@ sequenceDiagram
     actor Agent as Compliance Agent
     participant UI as Dashboard UI
     participant API as Verify API Route
-    participant AI as Multimodal LLM (Gemini/Claude)
+    participant AI as Multimodal LLM (Gemini)
     participant Rules as Deterministic Verifier
 
     Agent->>UI: Select Preset OR Upload Image & Fill Form

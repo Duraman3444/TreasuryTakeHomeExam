@@ -62,10 +62,7 @@ This document explains the technical choices, architecture decisions, and core a
 * **Honest limitation — deliberately conservative.** Vision models cannot reliably distinguish *subtle* font-weight differences, and early testing showed an aggressive prompt produced false alarms on genuinely-bold labels. Because a compliance tool that cries wolf erodes agent trust (Dave: "don't make my life harder"), the prompt is tuned to **default to `prominent` and only flag when clearly non-bold or genuinely tiny/buried/low-contrast.** The result: zero false positives on compliant labels in testing, at the cost of letting *borderline* non-bold cases through. It is a best-effort assist that surfaces obvious violations, not a guaranteed bold-enforcement gate — the agent's eye remains the backstop for subtle cases.
 
 ### Deterministic Extraction (`temperature: 0`)
-* Both providers are called at `temperature: 0` so the same label yields the same extracted fields on every run — important for an auditable compliance tool (early testing showed the model varying how much of the class/type designation it returned between runs).
-
-### Provider Routing (known sharp edge)
-* The backend selects Claude whenever `CLAUDE_API_KEY`/`ANTHROPIC_API_KEY` is present and otherwise defaults to Gemini. **A non-empty placeholder Claude value will hijack routing** and cause `401` errors, so the shipped `.env.example` keeps the Claude key commented out. A future hardening pass should validate the key format (`sk-ant-` prefix, non-placeholder) before selecting Claude.
+* Gemini is called at `temperature: 0` so the same label yields the same extracted fields on every run — important for an auditable compliance tool (early testing showed the model varying how much of the class/type designation it returned between runs).
 
 ---
 

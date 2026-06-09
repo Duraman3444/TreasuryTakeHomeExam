@@ -2,7 +2,7 @@
 
 An interactive, serverless prototype designed for TTB (Alcohol and Tobacco Tax and Trade Bureau) compliance agents to automate label verification against COLA (Certification/Exemption of Label/Bottle Approval) applications. 
 
-This standalone proof-of-concept leverages **Google Gemini 2.5 Flash** or **Anthropic Claude 3.5 Sonnet** for high-fidelity visual OCR text extraction, paired with a deterministic Javascript verification engine for legal rule matching.
+This standalone proof-of-concept leverages **Google Gemini 2.5 Flash** for high-fidelity visual OCR text extraction, paired with a deterministic Javascript verification engine for legal rule matching.
 
 ### 🔗 Live Demo
 **[https://treasury-take-home-exam.vercel.app](https://treasury-take-home-exam.vercel.app)**
@@ -13,20 +13,16 @@ Deployed on Vercel with a server-side Gemini API key — no setup required to tr
 
 ## 1. Technical Architecture & System Flow
 
-The diagram below demonstrates how data flows from the user interface, through the Next.js backend, routes to the corresponding LLM provider, and processes audits inside the custom compliance rules engine:
+The diagram below demonstrates how data flows from the user interface, through the Next.js backend, to the LLM provider, and processes audits inside the custom compliance rules engine:
 
 ```mermaid
 graph TD
     A[Compliance Agent Interface] -->|Uploads Label Image & COLA Form| B(Next.js Client Dashboard)
     B -->|Fetch POST /api/verify| C[Next.js API Route handler]
     
-    C -->|Detects API Key Prefix or Environment Keys| D{Provider Router}
-    
-    D -->|GEMINI_API_KEY / default| E[Google Gemini 2.5 Flash]
-    D -->|starts with 'sk-ant-' / CLAUDE_API_KEY| F[Anthropic Claude 3.5 Sonnet]
+    C -->|GEMINI_API_KEY| E[Google Gemini 2.5 Flash]
     
     E -->|Returns Extracted Fields JSON| G[Compliance Engine]
-    F -->|Returns Extracted Fields JSON| G
     
     G -->|Deterministic Rule Matches & word-level diffs| H[Verification Report Generator]
     H -->|Status: MATCH, WARNING, MISMATCH, INCOMPLETE| B
@@ -41,7 +37,7 @@ graph TD
 
 ### Prerequisites
 *   [Node.js](https://nodejs.org/) (v18.x or v20.x recommended)
-*   An active **Google Gemini API Key** or **Anthropic Claude API Key**
+*   An active **Google Gemini API Key**
 
 ### Local Run Steps
 1.  **Clone or Open the Repository**:
@@ -60,15 +56,10 @@ graph TD
     ```bash
     cp .env.example .env.local
     ```
-    Open `.env.local` and fill in **one** key. The provider is chosen by which key is present:
+    Open `.env.local` and fill in your key:
     ```env
-    GEMINI_API_KEY=AIza...      # Gemini (default) — get one at https://aistudio.google.com/apikey
-    # OR
-    CLAUDE_API_KEY=sk-ant-...   # Claude
+    GEMINI_API_KEY=AIza...      # Gemini — get one at https://aistudio.google.com/apikey
     ```
-    > ⚠️ **Set only one key.** If `CLAUDE_API_KEY` (or `ANTHROPIC_API_KEY`) is present, the app routes
-    > **all** requests to Claude — so leave the Claude line commented out when using Gemini. The shipped
-    > `.env.example` keeps Claude commented for this reason.
 
 4.  **Start the Server**:
     ```bash
@@ -82,8 +73,7 @@ graph TD
 
 The API key is read **server-side** from the environment — it is never exposed to the browser:
 
-*   Set `GEMINI_API_KEY` (starts with `AIza...`) **or** `CLAUDE_API_KEY` (starts with `sk-ant-...`) inside `label-verification/.env.local` for local development, or as a project Environment Variable on the host (e.g. Vercel) for the deployed app.
-*   The backend selects the provider from whichever key is present (Claude if a `CLAUDE_API_KEY`/`ANTHROPIC_API_KEY` is set, otherwise Gemini), so set **only one**.
+*   Set `GEMINI_API_KEY` (starts with `AIza...`) inside `label-verification/.env.local` for local development, or as a project Environment Variable on the host (e.g. Vercel) for the deployed app.
 *   The deployed demo ships with a server-side `GEMINI_API_KEY`, so end users don't enter anything.
 
 ---
@@ -95,7 +85,6 @@ The API key is read **server-side** from the environment — it is never exposed
 | Language | **TypeScript 5** | Type-safe app + API in one codebase |
 | Framework | **Next.js 15** (App Router) + **React 19** | UI and serverless `/api/verify` route |
 | AI / OCR | **Google Gemini 2.5 Flash** via `@google/generative-ai` | Multimodal field extraction from label images |
-| AI / OCR (alt) | **Anthropic Claude 3.5 Sonnet** via REST `fetch` | Drop-in alternate provider |
 | Compliance logic | **Custom TypeScript engine** (`src/lib/verifier.ts`) | Deterministic rule matching + LCS word diff |
 | Icons | **lucide-react** | Interface iconography |
 | Styling | **CSS custom properties** + inline styles | Light, high-contrast USWDS-inspired federal theme |
@@ -107,7 +96,7 @@ The API key is read **server-side** from the environment — it is never exposed
 **Complete and deployed.** Both single-label and batch verification have been verified end-to-end against the live Gemini API, and the app is live on Vercel (see [Live Demo](#-live-demo)). See [`checklist.md`](./checklist.md) for the full breakdown and [`design_decisions.md`](./design_decisions.md) for design trade-offs.
 
 ### **Completed & verified:**
-*   **API Verification Route**: Routes to Google Gemini 2.5 Flash (default) or Anthropic Claude 3.5 Sonnet, with deterministic (`temperature: 0`) extraction and retry-with-backoff on transient `429`/`503`.
+*   **API Verification Route**: Uses Google Gemini 2.5 Flash, with deterministic (`temperature: 0`) extraction and retry-with-backoff on transient `429`/`503`.
 *   **Single Label Verification Dashboard**: Visual HTML5 comparative canvas, real-time label text editing, word-level Longest Common Subsequence (LCS) diff viewer, an "Autofill from label" helper, and an Agent Decision panel.
 *   **Batch Verification Dashboard**: Multi-image uploader + CSV mapper with filename matching, "Unlisted (not in CSV)" handling, a client-side concurrency-limited queue, live progress/stats, diagnostics, and a CSV template. Verified live with a 5-item correct set (all MATCH) and error set (all MISMATCH).
 *   **Compliance Rules Engine**: Verifies **brand name, class/type, ABV (with proof conversion), net contents, bottler name/address, country of origin (imports), and the Government Health Warning**. Strict word-for-word + ALL-CAPS checks for the warning, plus a conservative, AI-assessed **bold/prominence** check that flags clearly non-bold or buried/tiny warnings as reviewable WARNINGs (best-effort — see `design_decisions.md`). Four statuses: `MATCH`, `WARNING`, `MISMATCH`, and **`INCOMPLETE`** (blank reference field — surfaces what the AI read rather than a misleading mismatch).
@@ -126,7 +115,7 @@ Since this Next.js app is built on App Router and uses serverless API routes, it
 
 > **Important deploy notes**
 > - **Root Directory**: the Next.js app lives in `label-verification/`, *not* the repo root. Set the platform's "Root Directory" to `label-verification` or the build will fail.
-> - **One key only**: set **`GEMINI_API_KEY`** (and *not* `CLAUDE_API_KEY`) unless you intend to use Claude — see the routing note in §2.
+> - **API key**: set **`GEMINI_API_KEY`** — see §2.
 > - **Quota**: Gemini's free tier rate-limits image requests; under demo load you may see `429`/`503`. Enable billing for sustained throughput.
 
 ### Vercel (how this demo is deployed)
