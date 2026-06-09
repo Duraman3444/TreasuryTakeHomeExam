@@ -154,6 +154,14 @@ export default function VerificationDashboard() {
     ctx.font = "bold 14px Arial, sans-serif";
     ctx.fillText(`${labelValues.abv}  •  ${labelValues.netContents}`, canvas.width / 2, 150);
 
+    // Bottler name/address and (for imports) country of origin
+    const meta = [labelValues.bottlerNameAddress, labelValues.countryOfOrigin].filter(Boolean).join("   •   ");
+    if (meta) {
+      ctx.fillStyle = options.darkBg ? "#94a3b8" : "#57534e";
+      ctx.font = "9px Arial, sans-serif";
+      ctx.fillText(meta, canvas.width / 2, 166);
+    }
+
     // Government Warning Panel
     ctx.strokeStyle = options.darkBg ? "rgba(255,255,255,0.1)" : "#e7e5e4";
     ctx.fillStyle = options.darkBg ? "rgba(15,23,42,0.6)" : "rgba(250,250,249,0.8)";
@@ -270,6 +278,8 @@ export default function VerificationDashboard() {
           classType: "",
           abv: "",
           netContents: "",
+          bottlerNameAddress: "",
+          countryOfOrigin: "",
           governmentWarning: STANDARD_GOVERNMENT_WARNING_FULL,
         });
       }
@@ -340,6 +350,8 @@ export default function VerificationDashboard() {
         classType: ex.classType || "",
         abv: ex.abv || "",
         netContents: ex.netContents || "",
+        bottlerNameAddress: ex.bottlerNameAddress || "",
+        countryOfOrigin: ex.countryOfOrigin || "",
         governmentWarning: ex.governmentWarning || STANDARD_GOVERNMENT_WARNING_FULL,
       });
     } catch (err: unknown) {
@@ -821,6 +833,50 @@ export default function VerificationDashboard() {
                   type="text"
                   value={formValues.netContents}
                   onChange={(e) => handleInputChange("netContents", e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "0.5rem 0.75rem",
+                    backgroundColor: "var(--bg-primary)",
+                    border: "1px solid var(--bg-tertiary)",
+                    color: "var(--text-primary)",
+                    borderRadius: "var(--radius-sm)",
+                    fontSize: "0.875rem",
+                    outline: "none"
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: "0.75rem", fontWeight: "600", color: "var(--text-secondary)", display: "block", marginBottom: "0.25rem" }}>
+                  Bottler / Producer Name & Address
+                </label>
+                <input
+                  type="text"
+                  value={formValues.bottlerNameAddress}
+                  onChange={(e) => handleInputChange("bottlerNameAddress", e.target.value)}
+                  placeholder="e.g. Bottled by Old Tom Distillery, Bardstown, KY"
+                  style={{
+                    width: "100%",
+                    padding: "0.5rem 0.75rem",
+                    backgroundColor: "var(--bg-primary)",
+                    border: "1px solid var(--bg-tertiary)",
+                    color: "var(--text-primary)",
+                    borderRadius: "var(--radius-sm)",
+                    fontSize: "0.875rem",
+                    outline: "none"
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: "0.75rem", fontWeight: "600", color: "var(--text-secondary)", display: "block", marginBottom: "0.25rem" }}>
+                  Country of Origin <span style={{ color: "var(--text-muted)", fontWeight: "400" }}>(imports only)</span>
+                </label>
+                <input
+                  type="text"
+                  value={formValues.countryOfOrigin}
+                  onChange={(e) => handleInputChange("countryOfOrigin", e.target.value)}
+                  placeholder="e.g. Product of Scotland — leave blank for domestic"
                   style={{
                     width: "100%",
                     padding: "0.5rem 0.75rem",

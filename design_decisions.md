@@ -56,6 +56,11 @@ This document explains the technical choices, architecture decisions, and core a
 ### Compliance Status Model: MATCH / WARNING / MISMATCH / INCOMPLETE
 * The engine returns one of four per-field statuses. `INCOMPLETE` was added after live testing: when an agent leaves a COLA form field blank, the engine no longer emits a misleading `MISMATCH` (or a false "partial match" `WARNING`). It surfaces what the AI actually read from the label and prompts the agent to complete the form. `INCOMPLETE` outranks `WARNING` but not `MISMATCH` in the overall verdict, and it never auto-approves.
 
+### Field Coverage & the Government-Warning "Bold/Prominence" Check
+* The engine verifies all five fields from the brief's sample label (brand, class/type, ABV, net contents, government warning) **plus** the two remaining TTB "common elements": **bottler name/address** and **country of origin** (the latter treated as required only for imports).
+* Per Jenny's note that the warning must be "all caps **and bold**" and that violators "bury it in tiny text," the warning check goes beyond text: the multimodal model returns a `governmentWarningProminence` signal (`prominent` / `not_bold` / `too_small`) judged on **font weight**, not just casing. A non-bold or buried warning whose text is otherwise exact is downgraded to a **WARNING** for the agent to review.
+* **Honest limitation**: bold/prominence is an *AI-assessed* visual judgment, not a pixel measurement. It reliably catches the gross cases (clearly non-bold heading, tiny/low-contrast text) in testing, but subtle font-weight differences are a soft signal — hence it produces a reviewable WARNING rather than a hard rejection.
+
 ### Deterministic Extraction (`temperature: 0`)
 * Both providers are called at `temperature: 0` so the same label yields the same extracted fields on every run — important for an auditable compliance tool (early testing showed the model varying how much of the class/type designation it returned between runs).
 

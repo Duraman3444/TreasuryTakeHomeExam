@@ -18,6 +18,8 @@ export interface VerificationReport {
     classType: VerificationFieldResult;
     abv: VerificationFieldResult;
     netContents: VerificationFieldResult;
+    bottlerNameAddress: VerificationFieldResult;
+    countryOfOrigin: VerificationFieldResult;
     governmentWarning: VerificationFieldResult;
   };
 }
@@ -134,6 +136,37 @@ function incompleteResult(fieldLabel: string, actual: string): VerificationField
 }
 
 /**
+ * Generic text-field comparison (exact → MATCH, casing/punctuation → WARNING,
+ * substring → optional partial WARNING, otherwise MISMATCH). Blank reference → INCOMPLETE.
+ * Used for free-text fields like bottler name/address and country of origin.
+ */
+function compareTextField(
+  fieldLabel: string,
+  expectedRaw: string,
+  actualRaw: string,
+  allowPartial = false
+): VerificationFieldResult {
+  const exp = expectedRaw.trim();
+  const act = actualRaw.trim();
+  const Cap = fieldLabel.charAt(0).toUpperCase() + fieldLabel.slice(1);
+
+  if (!exp) return incompleteResult(fieldLabel, act);
+  if (!act) {
+    return { status: 'MISMATCH', expected: exp, actual: 'Not detected', message: `${Cap} could not be detected on the label.` };
+  }
+  if (exp === act) {
+    return { status: 'MATCH', expected: exp, actual: act, message: `${Cap} matches exactly.` };
+  }
+  if (normalizeString(exp) === normalizeString(act)) {
+    return { status: 'WARNING', expected: exp, actual: act, message: `${Cap} matches, but casing or punctuation differs.`, diff: diffWords(exp, act) };
+  }
+  if (allowPartial && (act.toLowerCase().includes(exp.toLowerCase()) || exp.toLowerCase().includes(act.toLowerCase()))) {
+    return { status: 'WARNING', expected: exp, actual: act, message: `Partial match on ${fieldLabel}; the label and application differ in detail.`, diff: diffWords(exp, act) };
+  }
+  return { status: 'MISMATCH', expected: exp, actual: act, message: `${Cap} does not match the application.`, diff: diffWords(exp, act) };
+}
+
+/**
  * Verifies the extracted values against form reference values
  */
 export function verifyLabel(
@@ -143,6 +176,8 @@ export function verifyLabel(
     abv: string;
     netContents: string;
     governmentWarning: string;
+    bottlerNameAddress?: string;
+    countryOfOrigin?: string;
   },
   extracted: {
     brandName: string | null;
@@ -151,6 +186,9 @@ export function verifyLabel(
     netContents: string | null;
     governmentWarning: string | null;
     isGovernmentWarningPresent: boolean;
+    bottlerNameAddress?: string | null;
+    countryOfOrigin?: string | null;
+    governmentWarningProminence?: 'prominent' | 'not_bold' | 'too_small' | null;
   }
 ): VerificationReport {
   // 1. Verify Brand Name
@@ -349,12 +387,31 @@ export function verifyLabel(
     const cleanStandard = STANDARD_GOVERNMENT_WARNING_FULL;
 
     if (cleanActual === cleanStandard) {
-      warningResult = {
-        status: 'MATCH',
-        expected: STANDARD_GOVERNMENT_WARNING_FULL,
-        actual: actWarning,
-        message: 'Government warning matches the standard CFR Title 27 text exactly.',
-      };
+      // Text is exact. TTB also requires "GOVERNMENT WARNING:" to be BOLD and conspicuous,
+      // so factor in the AI's visual prominence assessment (Jenny's "all caps AND bold" / "tiny text" concern).
+      const prominence = extracted.governmentWarningProminence;
+      if (prominence === 'not_bold') {
+        warningResult = {
+          status: 'WARNING',
+          expected: STANDARD_GOVERNMENT_WARNING_FULL,
+          actual: actWarning,
+          message: 'Warning text is exact, but the "GOVERNMENT WARNING:" heading does not appear BOLD. TTB requires it in bold capital letters — verify formatting.',
+        };
+      } else if (prominence === 'too_small') {
+        warningResult = {
+          status: 'WARNING',
+          expected: STANDARD_GOVERNMENT_WARNING_FULL,
+          actual: actWarning,
+          message: 'Warning text is exact, but it appears in small/hard-to-read text. TTB requires the statement be conspicuous and legible — recommend manual review.',
+        };
+      } else {
+        warningResult = {
+          status: 'MATCH',
+          expected: STANDARD_GOVERNMENT_WARNING_FULL,
+          actual: actWarning,
+          message: 'Government warning matches the standard CFR Title 27 text exactly, in bold, legible form.',
+        };
+      }
     } else {
       // Find out if it is just a casing issue on the prefix or a body typo
       const bodyPartAct = actWarning.replace(/^Government Warning:\s*/i, "").trim();
@@ -390,12 +447,44 @@ export function verifyLabel(
     }
   }
 
+  // 6. Verify Bottler Name / Address (optional field; addresses vary in formatting → allow partial)
+  const bottlerResult = compareTextField(
+    'bottler name/address',
+    (form.bottlerNameAddress || '').trim(),
+    (extracted.bottlerNameAddress || '').trim(),
+    true
+  );
+
+  // 7. Verify Country of Origin (required only for imports → handle the "not declared" case gracefully)
+  const expCountry = (form.countryOfOrigin || '').trim();
+  const actCountry = (extracted.countryOfOrigin || '').trim();
+  let countryResult: VerificationFieldResult;
+  if (!expCountry && !actCountry) {
+    countryResult = {
+      status: 'MATCH',
+      expected: '—',
+      actual: '—',
+      message: 'No country of origin declared — required only for imported products.',
+    };
+  } else if (!expCountry && actCountry) {
+    countryResult = {
+      status: 'WARNING',
+      expected: '—',
+      actual: actCountry,
+      message: `Label declares a country of origin ("${actCountry}") but the application does not. Confirm the product's import status.`,
+    };
+  } else {
+    countryResult = compareTextField('country of origin', expCountry, actCountry, true);
+  }
+
   // Compute overall status
   const statuses = [
     brandResult.status,
     classResult.status,
     abvResult.status,
     netResult.status,
+    bottlerResult.status,
+    countryResult.status,
     warningResult.status,
   ];
 
@@ -415,6 +504,8 @@ export function verifyLabel(
       classType: classResult,
       abv: abvResult,
       netContents: netResult,
+      bottlerNameAddress: bottlerResult,
+      countryOfOrigin: countryResult,
       governmentWarning: warningResult,
     },
   };

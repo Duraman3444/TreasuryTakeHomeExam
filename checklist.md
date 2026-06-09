@@ -38,12 +38,13 @@ This checklist outlines the development phases for the standalone proof-of-conce
 - [x] Integrate Gemini & Claude Multimodal API (automatically switching based on key/env format)
 - [x] Design robust prompt to extract fields: Brand Name, ABV, Net Contents, Class/Type, and raw Government Warning text
 - [x] Implement strict verification logic:
-  - [x] **Exact String Match**: Compare brand name, class/type, and net contents (handling minor casing discrepancies as warnings)
+  - [x] **Exact String Match**: Compare brand name, class/type, net contents, and bottler name/address (handling minor casing discrepancies as warnings; partial matches on addresses)
+  - [x] **Country of Origin**: Compared when present; treated as not-required for domestic products, MISMATCH if an import application expects one but the label omits it
   - [x] **ABV Parser & Matcher**: Match alcohol content percentage (e.g., "45%" vs "45% Alc./Vol." or "90 Proof")
   - [x] **Government Warning Checker**:
     - [x] Word-for-word string match against the CFR Title 27 standard text
     - [x] Case-sensitivity check (specifically checking if "GOVERNMENT WARNING:" is in ALL CAPS)
-    - [x] Formatting check (checking if warning is bolded or visually distinct where possible, or flagging formatting warnings)
+    - [x] **Bold / prominence check**: the multimodal model reports whether the "GOVERNMENT WARNING:" heading is bold and conspicuous vs. not-bold or tiny/buried; non-bold or hard-to-read warnings are flagged as WARNINGs (Jenny's "all caps AND bold" / "smaller font, buried in tiny text" concern)
 - [x] Return structured JSON response with verification status (`MATCH`, `WARNING`, `MISMATCH`) and detailed diffs for each field
 
 ## Phase 3: Single Label Verification UI

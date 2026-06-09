@@ -16,6 +16,8 @@ interface BatchItem {
     classType: string;
     abv: string;
     netContents: string;
+    bottlerNameAddress: string;
+    countryOfOrigin: string;
     governmentWarning: string;
   };
   labelValues: {
@@ -23,6 +25,8 @@ interface BatchItem {
     classType: string;
     abv: string;
     netContents: string;
+    bottlerNameAddress: string;
+    countryOfOrigin: string;
     governmentWarning: string;
   };
   imageData: string; // Base64 dataURL
@@ -40,7 +44,7 @@ export default function BatchDashboard() {
   
   // Custom uploaded files state
   const [customImages, setCustomImages] = useState<{ name: string; data: string }[]>([]);
-  const [csvData, setCsvData] = useState<{ filename: string; brandName: string; classType: string; abv: string; netContents: string; governmentWarning: string }[]>([]);
+  const [csvData, setCsvData] = useState<{ filename: string; brandName: string; classType: string; abv: string; netContents: string; bottlerNameAddress: string; countryOfOrigin: string; governmentWarning: string }[]>([]);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isDragActiveImages, setIsDragActiveImages] = useState(false);
   const [isDragActiveCsv, setIsDragActiveCsv] = useState(false);
@@ -69,6 +73,8 @@ export default function BatchDashboard() {
       const classIdx = getIndex(["class", "type", "category"]);
       const abvIdx = getIndex(["abv", "alcohol", "proof", "strength"]);
       const netIdx = getIndex(["net", "volume", "content", "size"]);
+      const bottlerIdx = getIndex(["bottler", "producer", "address", "distiller"]);
+      const countryIdx = getIndex(["country", "origin"]);
       const warnIdx = getIndex(["warning", "government", "surgeon"]);
 
       if (fileIdx === -1 || brandIdx === -1 || classIdx === -1 || abvIdx === -1 || netIdx === -1) {
@@ -94,6 +100,8 @@ export default function BatchDashboard() {
         const classType = cleanVal(tokens[classIdx]);
         const abv = cleanVal(tokens[abvIdx]);
         const netContents = cleanVal(tokens[netIdx]);
+        const bottlerNameAddress = bottlerIdx !== -1 ? cleanVal(tokens[bottlerIdx]) : "";
+        const countryOfOrigin = countryIdx !== -1 ? cleanVal(tokens[countryIdx]) : "";
         const governmentWarning = warnIdx !== -1 && tokens[warnIdx] ? cleanVal(tokens[warnIdx]) : STANDARD_GOVERNMENT_WARNING_FULL;
 
         if (filename && brandName) {
@@ -103,6 +111,8 @@ export default function BatchDashboard() {
             classType,
             abv,
             netContents,
+            bottlerNameAddress,
+            countryOfOrigin,
             governmentWarning: governmentWarning || STANDARD_GOVERNMENT_WARNING_FULL
           });
         }
@@ -117,7 +127,7 @@ export default function BatchDashboard() {
   // Build queue items from image and CSV matching
   const matchAndBuildBatchItems = (
     images: { name: string; data: string }[],
-    csvRows: { filename: string; brandName: string; classType: string; abv: string; netContents: string; governmentWarning: string }[]
+    csvRows: { filename: string; brandName: string; classType: string; abv: string; netContents: string; bottlerNameAddress: string; countryOfOrigin: string; governmentWarning: string }[]
   ) => {
     const cleanName = (n: string) => n.toLowerCase().split(".")[0].trim();
     const matchedImageNames = new Set<string>();
@@ -140,6 +150,8 @@ export default function BatchDashboard() {
           classType: row.classType,
           abv: row.abv,
           netContents: row.netContents,
+          bottlerNameAddress: row.bottlerNameAddress,
+          countryOfOrigin: row.countryOfOrigin,
           governmentWarning: row.governmentWarning
         },
         labelValues: {
@@ -147,6 +159,8 @@ export default function BatchDashboard() {
           classType: row.classType,
           abv: row.abv,
           netContents: row.netContents,
+          bottlerNameAddress: row.bottlerNameAddress,
+          countryOfOrigin: row.countryOfOrigin,
           governmentWarning: row.governmentWarning
         },
         imageData: matchedImg ? matchedImg.data : "",
@@ -159,7 +173,7 @@ export default function BatchDashboard() {
     // Represent uploaded images that aren't referenced by any CSV row, so they're
     // visible in the queue instead of silently dropped. They can't be verified
     // (no COLA reference data), so they're flagged for the user to add a CSV row.
-    const blankForm = { brandName: "", classType: "", abv: "", netContents: "", governmentWarning: STANDARD_GOVERNMENT_WARNING_FULL };
+    const blankForm = { brandName: "", classType: "", abv: "", netContents: "", bottlerNameAddress: "", countryOfOrigin: "", governmentWarning: STANDARD_GOVERNMENT_WARNING_FULL };
     const orphanItems: BatchItem[] = images
       .filter(img => !matchedImageNames.has(img.name))
       .map((img, idx) => ({
@@ -245,11 +259,11 @@ export default function BatchDashboard() {
 
   // Download template CSV file helper
   const downloadCsvTemplate = () => {
-    const csvContent = 
-      "filename,brandName,classType,abv,netContents,governmentWarning\n" +
-      "old_tom.png,OLD TOM DISTILLERY,Kentucky Straight Bourbon Whiskey,45% Alc./Vol.,750 mL,\n" +
-      "stones_throw.jpg,Stone's Throw,Dry Gin,40% ABV,1 L,\n" +
-      "highland_mist.png,HIGHLAND MIST,Single Malt Scotch Whisky,43% Alc./Vol.,700 mL,";
+    const csvContent =
+      "filename,brandName,classType,abv,netContents,bottlerNameAddress,countryOfOrigin,governmentWarning\n" +
+      "old_tom.png,OLD TOM DISTILLERY,Kentucky Straight Bourbon Whiskey,45% Alc./Vol.,750 mL,\"Bottled by Old Tom Distillery, Bardstown, KY\",,\n" +
+      "stones_throw.jpg,Stone's Throw,Dry Gin,40% ABV,1 L,\"Distilled by Stone's Throw Co., Portland, OR\",,\n" +
+      "highland_mist.png,HIGHLAND MIST,Single Malt Scotch Whisky,43% Alc./Vol.,700 mL,\"Imported by Highland Imports, New York, NY\",Product of Scotland,";
     
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -320,6 +334,8 @@ export default function BatchDashboard() {
           classType: "Kentucky Straight Bourbon Whiskey",
           abv: "45% Alc./Vol.",
           netContents: "750 mL",
+          bottlerNameAddress: "Bottled by Old Tom Distillery, Bardstown, KY",
+          countryOfOrigin: "",
           governmentWarning: STANDARD_GOVERNMENT_WARNING_FULL,
         },
         label: {
@@ -327,6 +343,8 @@ export default function BatchDashboard() {
           classType: "Kentucky Straight Bourbon Whiskey",
           abv: "45% Alc./Vol. (90 Proof)",
           netContents: "750 mL",
+          bottlerNameAddress: "Bottled by Old Tom Distillery, Bardstown, KY",
+          countryOfOrigin: "",
           governmentWarning: STANDARD_GOVERNMENT_WARNING_FULL,
         }
       },
@@ -338,6 +356,8 @@ export default function BatchDashboard() {
           classType: "Dry Gin",
           abv: "40% ABV",
           netContents: "1 L",
+          bottlerNameAddress: "Distilled & Bottled by Stone's Throw Co., Portland, OR",
+          countryOfOrigin: "",
           governmentWarning: STANDARD_GOVERNMENT_WARNING_FULL,
         },
         label: {
@@ -345,6 +365,8 @@ export default function BatchDashboard() {
           classType: "Dry Gin",
           abv: "40% Alc./Vol.",
           netContents: "1 L",
+          bottlerNameAddress: "Distilled & Bottled by Stone's Throw Co., Portland, OR",
+          countryOfOrigin: "",
           governmentWarning: STANDARD_GOVERNMENT_WARNING_FULL,
         }
       },
@@ -356,6 +378,8 @@ export default function BatchDashboard() {
           classType: "Single Malt Scotch Whisky",
           abv: "43% Alc./Vol.",
           netContents: "700 mL",
+          bottlerNameAddress: "Imported by Highland Imports, New York, NY",
+          countryOfOrigin: "Product of Scotland",
           governmentWarning: STANDARD_GOVERNMENT_WARNING_FULL,
         },
         label: {
@@ -363,6 +387,8 @@ export default function BatchDashboard() {
           classType: "Single Malt Scotch Whisky",
           abv: "43% Alc./Vol.",
           netContents: "700 mL",
+          bottlerNameAddress: "Imported by Highland Imports, New York, NY",
+          countryOfOrigin: "Product of Scotland",
           // Lowercase government warning prefix
           governmentWarning: STANDARD_GOVERNMENT_WARNING_FULL.replace("GOVERNMENT WARNING:", "Government Warning:"),
         }
@@ -375,6 +401,8 @@ export default function BatchDashboard() {
           classType: "Tequila Reposado",
           abv: "40% Alc./Vol.",
           netContents: "750 mL",
+          bottlerNameAddress: "Imported by El Dorado Spirits, Houston, TX",
+          countryOfOrigin: "Product of Mexico",
           governmentWarning: STANDARD_GOVERNMENT_WARNING_FULL,
         },
         label: {
@@ -382,6 +410,8 @@ export default function BatchDashboard() {
           classType: "Tequila Reposado",
           abv: "40% Alc./Vol.",
           netContents: "750 mL",
+          bottlerNameAddress: "Imported by El Dorado Spirits, Houston, TX",
+          countryOfOrigin: "Product of Mexico",
           // Mismatch in text wording
           governmentWarning: STANDARD_GOVERNMENT_WARNING_FULL.replace("Surgeon General", "Sergeon General"),
         }
@@ -394,6 +424,8 @@ export default function BatchDashboard() {
           classType: "Red Wine",
           abv: "13.5% Alc./Vol.",
           netContents: "750 mL",
+          bottlerNameAddress: "Imported by Chateau Rouge USA, Napa, CA",
+          countryOfOrigin: "Product of France",
           governmentWarning: STANDARD_GOVERNMENT_WARNING_FULL,
         },
         label: {
@@ -401,6 +433,8 @@ export default function BatchDashboard() {
           classType: "Red Wine",
           abv: "14.5% Alc./Vol.", // 1% mismatch!
           netContents: "750 mL",
+          bottlerNameAddress: "Imported by Chateau Rouge USA, Napa, CA",
+          countryOfOrigin: "Product of France",
           governmentWarning: STANDARD_GOVERNMENT_WARNING_FULL,
         }
       }
@@ -431,6 +465,14 @@ export default function BatchDashboard() {
       ctx.font = "bold 12px Arial, sans-serif";
       ctx.fillStyle = "#1c1917";
       ctx.fillText(`${item.label.abv}  •  ${item.label.netContents}`, canvas.width / 2, 130);
+
+      // Bottler / Country of origin
+      const meta = [item.label.bottlerNameAddress, item.label.countryOfOrigin].filter(Boolean).join("   •   ");
+      if (meta) {
+        ctx.font = "8px Arial, sans-serif";
+        ctx.fillStyle = "#57534e";
+        ctx.fillText(meta, canvas.width / 2, 147);
+      }
 
       // Warning text block
       ctx.fillStyle = "rgba(0,0,0,0.02)";

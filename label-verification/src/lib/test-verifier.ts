@@ -36,16 +36,21 @@ function testVerifier() {
     classType: "Kentucky Straight Bourbon Whiskey",
     abv: "45% Alc./Vol.",
     netContents: "750 mL",
+    bottlerNameAddress: "Bottled by Old Tom Distillery, Bardstown, KY",
+    countryOfOrigin: "",
     governmentWarning: STANDARD_GOVERNMENT_WARNING_FULL,
   };
-  
+
   const extractedExact = {
     brandName: "OLD TOM DISTILLERY",
     classType: "Kentucky Straight Bourbon Whiskey",
     abv: "45% Alc./Vol.",
     netContents: "750 mL",
+    bottlerNameAddress: "Bottled by Old Tom Distillery, Bardstown, KY",
+    countryOfOrigin: "",
     governmentWarning: STANDARD_GOVERNMENT_WARNING_FULL,
-    isGovernmentWarningPresent: true
+    isGovernmentWarningPresent: true,
+    governmentWarningProminence: "prominent" as const,
   };
 
   const reportExact = verifyLabel(form, extractedExact);
@@ -91,6 +96,28 @@ function testVerifier() {
   // A blank field must not poison overall status when a real mismatch also exists (MISMATCH dominates)
   const reportBlankPlusMismatch = verifyLabel(blankForm, { ...extractedExact, abv: "12% Alc./Vol." });
   assert(reportBlankPlusMismatch.fields.abv.status === "INCOMPLETE", "Blank form ABV stays INCOMPLETE regardless of label value");
+
+  // Test case 5: Government Warning PROMINENCE / bold (Jenny: must be all-caps AND bold)
+  const reportNotBold = verifyLabel(form, { ...extractedExact, governmentWarningProminence: "not_bold" as const });
+  assert(reportNotBold.fields.governmentWarning.status === "WARNING", "Exact warning text that is NOT bold should be a WARNING");
+  assert(reportNotBold.fields.governmentWarning.message.toLowerCase().includes("bold"), "Should flag the bold requirement");
+  const reportTooSmall = verifyLabel(form, { ...extractedExact, governmentWarningProminence: "too_small" as const });
+  assert(reportTooSmall.fields.governmentWarning.status === "WARNING", "Exact warning text that is tiny/buried should be a WARNING");
+  const reportProminent = verifyLabel(form, extractedExact);
+  assert(reportProminent.fields.governmentWarning.status === "MATCH", "Bold, exact warning should be MATCH");
+
+  // Test case 6: Bottler name / address
+  const reportBottlerBad = verifyLabel(form, { ...extractedExact, bottlerNameAddress: "Bottled by Someone Else, Reno, NV" });
+  assert(reportBottlerBad.fields.bottlerNameAddress.status === "MISMATCH", "Wrong bottler should be MISMATCH");
+  assert(reportProminent.fields.bottlerNameAddress.status === "MATCH", "Matching bottler should be MATCH");
+
+  // Test case 7: Country of origin (required only for imports)
+  assert(reportProminent.fields.countryOfOrigin.status === "MATCH", "No country declared (domestic) should be MATCH, not a failure");
+  const importForm = { ...form, countryOfOrigin: "Product of Scotland" };
+  const reportImportOk = verifyLabel(importForm, { ...extractedExact, countryOfOrigin: "Product of Scotland" });
+  assert(reportImportOk.fields.countryOfOrigin.status === "MATCH", "Matching import country should be MATCH");
+  const reportImportMissing = verifyLabel(importForm, { ...extractedExact, countryOfOrigin: null });
+  assert(reportImportMissing.fields.countryOfOrigin.status === "MISMATCH", "Application expects a country but the label omits it -> MISMATCH");
 }
 
 function runAllTests() {

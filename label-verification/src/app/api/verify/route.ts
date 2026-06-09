@@ -74,8 +74,11 @@ Return a JSON object with this exact structure:
   "classType": "extracted class or type designation (e.g. Kentucky Straight Bourbon Whiskey, Vodka, Cider, Beer) or null",
   "abv": "extracted alcohol by volume (ABV) text or null",
   "netContents": "extracted net contents volume (e.g. 750 mL, 12 FL OZ) or null",
+  "bottlerNameAddress": "extracted name and address of the bottler/producer (e.g. 'Bottled by ABC Distillery, Frederick, MD') or null",
+  "countryOfOrigin": "extracted country of origin if present (e.g. 'Product of Mexico', 'Imported from Scotland'); null if not shown (it is only required for imports)",
   "governmentWarning": "extract the complete, word-for-word government warning text starting with 'GOVERNMENT WARNING:' (include all caps and exact punctuation, numbers, and text) or null",
-  "isGovernmentWarningPresent": true/false
+  "isGovernmentWarningPresent": true/false,
+  "governmentWarningProminence": "judge ONLY the font WEIGHT and size of the literal words 'GOVERNMENT WARNING:' (ignore that it is uppercase — caps alone is NOT bold). Return 'prominent' only if those words are in a visibly HEAVIER/THICKER (bold) stroke than the warning body text; return 'not_bold' if the heading is the same weight as the body text (not bold); return 'too_small' if the warning is in tiny, low-contrast, or buried text. TTB requires the heading to be bold."
 }
 
 Do not wrap in markdown or add extra text. Return only the JSON object.`;

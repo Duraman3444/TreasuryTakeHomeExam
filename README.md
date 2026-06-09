@@ -110,7 +110,7 @@ The API key is read **server-side** from the environment — it is never exposed
 *   **API Verification Route**: Routes to Google Gemini 2.5 Flash (default) or Anthropic Claude 3.5 Sonnet, with deterministic (`temperature: 0`) extraction and retry-with-backoff on transient `429`/`503`.
 *   **Single Label Verification Dashboard**: Visual HTML5 comparative canvas, real-time label text editing, word-level Longest Common Subsequence (LCS) diff viewer, an "Autofill from label" helper, and an Agent Decision panel.
 *   **Batch Verification Dashboard**: Multi-image uploader + CSV mapper with filename matching, "Unlisted (not in CSV)" handling, a client-side concurrency-limited queue, live progress/stats, diagnostics, and a CSV template. Verified live with a 5-item correct set (all MATCH) and error set (all MISMATCH).
-*   **Compliance Rules Engine**: Custom ABV regex parsing (percentage and proof conversion), net contents tolerance, brand matching, and strict word-for-word + ALL-CAPS casing checks for the Surgeon General warning. Four statuses: `MATCH`, `WARNING`, `MISMATCH`, and **`INCOMPLETE`** (blank reference field — surfaces what the AI read rather than a misleading mismatch).
+*   **Compliance Rules Engine**: Verifies **brand name, class/type, ABV (with proof conversion), net contents, bottler name/address, country of origin (imports), and the Government Health Warning**. Strict word-for-word + ALL-CAPS checks for the warning, plus an AI-assessed **bold/prominence** check (flags warnings that are not bold or are buried in tiny text). Four statuses: `MATCH`, `WARNING`, `MISMATCH`, and **`INCOMPLETE`** (blank reference field — surfaces what the AI read rather than a misleading mismatch).
 *   **UX / Accessibility**: Light, high-contrast USWDS-inspired federal theme with `:focus-visible` keyboard indicators, built for the 50+ agent demographic.
 *   **Performance**: Production verification round-trips in ~2 seconds — within the agency's 5-second requirement.
 
@@ -129,34 +129,11 @@ Since this Next.js app is built on App Router and uses serverless API routes, it
 > - **One key only**: set **`GEMINI_API_KEY`** (and *not* `CLAUDE_API_KEY`) unless you intend to use Claude — see the routing note in §2.
 > - **Quota**: Gemini's free tier rate-limits image requests; under demo load you may see `429`/`503`. Enable billing for sustained throughput.
 
-### Option A: Vercel (Recommended)
+### Vercel (how this demo is deployed)
 1. Push this repository to GitHub.
 2. In the Vercel dashboard, "Add New Project" → import the repo.
 3. **Set "Root Directory" to `label-verification`.**
 4. Add the Environment Variable **`GEMINI_API_KEY`** (Production + Preview).
 5. Deploy. (CLI alternative: `npm i -g vercel`, then `vercel` / `vercel --prod` run from inside `label-verification/`.)
 
-### Option B: Firebase App Hosting
-Firebase App Hosting automatically builds and manages your Next.js application backend.
-1. Initialize Firebase: `npx firebase-tools init apphosting` (run inside `label-verification/`).
-2. Select your Firebase project and name your web app.
-3. Configure your API secret keys in GCP Secret Manager and map them in your `apphosting.yaml` configuration file:
-   ```yaml
-   env:
-     - variable: GEMINI_API_KEY
-       secret: GEMINI_API_KEY_SECRET
-   ```
-4. Commit and push your code to GitHub; Firebase App Hosting will automatically trigger a rolling deployment.
-
-### Option C: Azure App Service (NodeJS Linux)
-Since the production COLA and agency infrastructure is Azure-based (as noted by Marcus), deploying to Azure App Service is a natural staging solution:
-1. Initialize Azure CLI and login: `az login`
-2. Create an App Service Plan and Web App:
-   ```bash
-   az webapp up --name ttb-compliance-portal --resource-group ttb-rg --plan ttb-plan --runtime "NODE|20-lts"
-   ```
-3. Set app settings for API keys:
-   ```bash
-   az webapp config appsettings set --name ttb-compliance-portal --resource-group ttb-rg --settings GEMINI_API_KEY="AIza..." CLAUDE_API_KEY="sk-ant-..."
-   ```
-4. Azure will build the application using Oryx and run the production server.
+The same App-Router build also runs on other Node hosts (Firebase App Hosting, Azure App Service — relevant given TTB's Azure infrastructure) using the same env-var configuration; Vercel was chosen here for the fastest path to a working public URL.
