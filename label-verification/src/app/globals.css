@@ -1,76 +1,58 @@
 @import "tailwindcss";
 
+/*
+ * Theme: U.S. Web Design System (USWDS) inspired — the federal standard.
+ * Light, high-contrast, gradient-free. Built for the 50+ agent demographic.
+ */
 :root {
-  /* Core Color Palette (HSL for smooth manipulation) */
-  --bg-primary: #0f172a;
-  --bg-secondary: #1e293b;
-  --bg-tertiary: #334155;
-  
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
+  /* Surfaces */
+  --bg-primary: #f0f0f0;   /* gray-cool-5 — page background */
+  --bg-secondary: #ffffff; /* white — cards */
+  --bg-tertiary: #dfe1e2;  /* gray-cool-10 — subtle fills / borders */
 
-  --primary: #6366f1; /* Indigo */
-  --primary-hover: #4f46e5;
-  --primary-glow: rgba(99, 102, 241, 0.15);
+  /* Text */
+  --text-primary: #1b1b1b;   /* ink */
+  --text-secondary: #565c65; /* gray-cool-50 */
+  --text-muted: #71767a;     /* gray-cool-40 */
 
-  --accent-blue: #0ea5e9; /* Sky */
-  --accent-purple: #a855f7; /* Purple */
+  /* Brand (USWDS blues) */
+  --primary: #005ea2;        /* primary */
+  --primary-hover: #1a4480;  /* primary-dark / navy */
+  --primary-dark: #162e51;   /* primary-darker — header banner */
+  --primary-glow: rgba(0, 94, 162, 0.12);
 
-  /* Compliance Status Colors */
-  --color-match: #10b981; /* Emerald */
-  --color-match-bg: rgba(16, 185, 129, 0.1);
-  --color-match-border: rgba(16, 185, 129, 0.25);
-  
-  --color-warning: #f59e0b; /* Amber */
-  --color-warning-bg: rgba(245, 158, 11, 0.1);
-  --color-warning-border: rgba(245, 158, 11, 0.35);
+  --accent-blue: #0076d6;   /* primary-vivid */
+  --accent-purple: #162e51; /* (legacy token) mapped to navy, no purple */
 
-  --color-mismatch: #ef4444; /* Rose */
-  --color-mismatch-bg: rgba(239, 68, 68, 0.1);
-  --color-mismatch-border: rgba(239, 68, 68, 0.3);
+  /* Compliance Status Colors (AA-contrast on white) */
+  --color-match: #2e8540;    /* green */
+  --color-match-bg: #ecf3ec;
+  --color-match-border: #9bb8a3;
 
-  --color-incomplete: #64748b; /* Slate — neutral "not verified" */
-  --color-incomplete-bg: rgba(100, 116, 139, 0.12);
-  --color-incomplete-border: rgba(100, 116, 139, 0.3);
+  --color-warning: #b45309;  /* dark amber — readable as text */
+  --color-warning-bg: #faf3d1;
+  --color-warning-border: #e6c14b;
 
-  /* Glassmorphism Tokens */
-  --glass-bg: rgba(30, 41, 59, 0.7);
-  --glass-border: 1px solid rgba(255, 255, 255, 0.08);
-  --glass-blur: blur(16px);
-  --glass-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
+  --color-mismatch: #b50909; /* error-dark red */
+  --color-mismatch-bg: #f8e9e9;
+  --color-mismatch-border: #e0a3a3;
 
-  /* Layout and Transitions */
-  --radius-lg: 16px;
-  --radius-md: 12px;
-  --radius-sm: 8px;
-  --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
+  --color-incomplete: #565c65; /* gray — neutral "not verified" */
+  --color-incomplete-bg: #f0f0f0;
+  --color-incomplete-border: #c6cace;
 
-/* Light Theme overrides if needed, but defaults to dark-first modern dashboard */
-@media (prefers-color-scheme: light) {
-  :root {
-    --bg-primary: #f8fafc;
-    --bg-secondary: #ffffff;
-    --bg-tertiary: #f1f5f9;
-    
-    --text-primary: #0f172a;
-    --text-secondary: #475569;
-    --text-muted: #94a3b8;
+  /* Card tokens (formerly glassmorphism — kept names for compatibility) */
+  --glass-bg: #ffffff;
+  --glass-border: 1px solid #dfe1e2;
+  --glass-blur: none;
+  --glass-shadow: 0 1px 2px rgba(27, 27, 27, 0.08);
 
-    --primary: #4f46e5;
-    --primary-hover: #4338ca;
-    --primary-glow: rgba(79, 70, 229, 0.08);
-
-    --glass-bg: rgba(255, 255, 255, 0.8);
-    --glass-border: 1px solid rgba(15, 23, 42, 0.08);
-    --glass-shadow: 0 10px 30px -10px rgba(15, 23, 42, 0.08);
-
-    --color-match-bg: rgba(16, 185, 129, 0.08);
-    --color-warning-bg: rgba(245, 158, 11, 0.08);
-    --color-mismatch-bg: rgba(239, 68, 68, 0.08);
-  }
+  /* Layout — squared-off, government-document feel */
+  --radius-lg: 8px;
+  --radius-md: 6px;
+  --radius-sm: 4px;
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.25s ease;
 }
 
 * {
@@ -89,41 +71,32 @@ body {
   overflow-x: hidden;
 }
 
-/* High-quality modern glass cards */
+/* Flat, bordered cards (USWDS card) */
 .glass-panel {
   background: var(--glass-bg);
   border: var(--glass-border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   box-shadow: var(--glass-shadow);
-  padding: 1.75rem;
-  transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast);
-}
-
-@supports (backdrop-filter: blur(1px)) {
-  .glass-panel {
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
-  }
+  padding: 1.5rem;
+  transition: box-shadow var(--transition-fast), border-color var(--transition-fast);
 }
 
 .glass-panel-interactive:hover {
-  transform: translateY(-2px);
-  border-color: rgba(255, 255, 255, 0.15);
-  box-shadow: 0 12px 45px -10px rgba(0, 0, 0, 0.6);
+  border-color: #a9aeb1;
+  box-shadow: 0 2px 6px rgba(27, 27, 27, 0.12);
 }
 
-/* Glowing text elements & headers */
+/* Headers: solid navy, no gradient */
 .gradient-text {
-  background: linear-gradient(135deg, var(--accent-blue) 0%, var(--primary) 50%, var(--accent-purple) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--primary-dark);
+  background: none;
+  -webkit-text-fill-color: currentColor;
 }
 
 /* Custom Scrollbar design */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 12px;
+  height: 12px;
 }
 
 ::-webkit-scrollbar-track {
@@ -131,21 +104,34 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--bg-tertiary);
-  border-radius: 4px;
+  background: #c6cace;
+  border-radius: 0;
 }
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-muted);
 }
 
-/* Accessibility Focus States for Keyboard Nav */
+/* Accessibility Focus States — USWDS-style 2px ring, no glow */
 button:focus-visible,
 input:focus-visible,
 select:focus-visible,
-textarea:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 3px;
-  box-shadow: 0 0 8px var(--primary-glow);
+textarea:focus-visible,
+a:focus-visible {
+  outline: 3px solid var(--accent-blue);
+  outline-offset: 0;
+  box-shadow: none;
 }
+
+/* Primary action button (USWDS) */
+.btn-primary {
+  background: var(--primary);
+  color: #ffffff;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-weight: 700;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+.btn-primary:hover { background: var(--primary-hover); }
 

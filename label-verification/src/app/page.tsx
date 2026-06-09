@@ -15,10 +15,9 @@ export default function Home() {
       {/* Header Banner */}
       <header
         style={{
-          borderBottom: "1px solid var(--glass-border)",
+          borderBottom: "1px solid var(--bg-tertiary)",
           padding: "1.25rem 2rem",
-          backgroundColor: "rgba(15, 23, 42, 0.4)",
-          backdropFilter: "blur(12px)",
+          backgroundColor: "var(--bg-secondary)",
           position: "sticky",
           top: 0,
           zIndex: 10,
@@ -40,12 +39,11 @@ export default function Home() {
               style={{
                 width: "40px",
                 height: "40px",
-                borderRadius: "10px",
-                background: "linear-gradient(135deg, var(--primary) 0%, var(--accent-purple) 100%)",
+                borderRadius: "4px",
+                backgroundColor: "var(--primary-dark)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                boxShadow: "0 0 15px var(--primary-glow)",
               }}
             >
               <ShieldCheck size={24} style={{ color: "white" }} />
@@ -81,9 +79,9 @@ export default function Home() {
                 fontSize: "0.825rem",
                 fontWeight: "600",
                 cursor: "pointer",
-                backgroundColor: activeTab === "single" ? "rgba(99, 102, 241, 0.12)" : "transparent",
-                color: activeTab === "single" ? "var(--primary)" : "var(--text-secondary)",
-                border: activeTab === "single" ? "1px solid var(--primary)" : "1px solid transparent",
+                backgroundColor: activeTab === "single" ? "var(--primary)" : "transparent",
+                color: activeTab === "single" ? "#ffffff" : "var(--text-secondary)",
+                border: activeTab === "single" ? "1px solid var(--primary)" : "1px solid var(--bg-tertiary)",
                 transition: "all var(--transition-fast)",
               }}
             >
@@ -97,9 +95,9 @@ export default function Home() {
                 fontSize: "0.825rem",
                 fontWeight: "600",
                 cursor: "pointer",
-                backgroundColor: activeTab === "batch" ? "rgba(99, 102, 241, 0.12)" : "transparent",
-                color: activeTab === "batch" ? "var(--primary)" : "var(--text-secondary)",
-                border: activeTab === "batch" ? "1px solid var(--primary)" : "1px solid transparent",
+                backgroundColor: activeTab === "batch" ? "var(--primary)" : "transparent",
+                color: activeTab === "batch" ? "#ffffff" : "var(--text-secondary)",
+                border: activeTab === "batch" ? "1px solid var(--primary)" : "1px solid var(--bg-tertiary)",
                 transition: "all var(--transition-fast)",
               }}
             >
@@ -158,12 +156,12 @@ export default function Home() {
       {/* Footer */}
       <footer
         style={{
-          borderTop: "1px solid var(--glass-border)",
+          borderTop: "1px solid var(--bg-tertiary)",
           padding: "1.5rem 2rem",
-          backgroundColor: "rgba(15, 23, 42, 0.6)",
+          backgroundColor: "var(--primary-dark)",
+          color: "#e6eaf0",
           textAlign: "center",
           fontSize: "0.75rem",
-          color: "var(--text-muted)",
           marginTop: "auto",
         }}
       >

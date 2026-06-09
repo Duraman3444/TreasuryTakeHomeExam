@@ -54,6 +54,7 @@ export default function VerificationDashboard({ apiKey }: VerificationDashboardP
   
   // Verification states
   const [loading, setLoading] = useState(false);
+  const [autofilling, setAutofilling] = useState(false);
   const [loadingStep, setLoadingStep] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{ report: VerificationReport; extracted: unknown } | null>(null);
@@ -304,6 +305,55 @@ export default function VerificationDashboard({ apiKey }: VerificationDashboardP
   };
 
   // Trigger compliance verification
+  // Read the fields straight off the label image with the AI and drop them into the
+  // COLA form as a starting point. Intended for custom uploads where the agent hasn't
+  // typed the application data yet — they can then adjust any field to match the
+  // actual COLA application before verifying.
+  const handleAutofill = async () => {
+    setError(null);
+    try {
+      let imageData = "";
+      if (uploadedImage) {
+        imageData = uploadedImage;
+      } else if (canvasRef.current) {
+        imageData = canvasRef.current.toDataURL(imageType);
+      } else {
+        throw new Error("Upload or load a label image first, then autofill.");
+      }
+
+      setAutofilling(true);
+      const response = await fetch("/api/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          image: imageData,
+          imageType,
+          // blank reference — we only want the AI's raw extraction back, not a comparison
+          formValues: { brandName: "", classType: "", abv: "", netContents: "", governmentWarning: "" },
+          apiKeyOverride: apiKey,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Autofill could not read the label.");
+      }
+
+      const ex = data.extracted || {};
+      setFormValues({
+        brandName: ex.brandName || "",
+        classType: ex.classType || "",
+        abv: ex.abv || "",
+        netContents: ex.netContents || "",
+        governmentWarning: ex.governmentWarning || STANDARD_GOVERNMENT_WARNING_FULL,
+      });
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Autofill failed.");
+    } finally {
+      setAutofilling(false);
+    }
+  };
+
   const handleVerify = async () => {
     setLoading(true);
     setError(null);
@@ -399,14 +449,14 @@ export default function VerificationDashboard({ apiKey }: VerificationDashboardP
           display: "flex", 
           flexWrap: "wrap", 
           gap: "0.25rem", 
-          backgroundColor: "rgba(15,23,42,0.4)", 
+          backgroundColor: "var(--bg-primary)", 
           padding: "0.5rem 0.75rem", 
           borderRadius: "var(--radius-sm)", 
           fontFamily: "monospace", 
           fontSize: "0.75rem",
           marginTop: "0.375rem",
           lineHeight: "1.4",
-          border: "1px solid rgba(255,255,255,0.05)"
+          border: "1px solid var(--bg-tertiary)"
         }}
       >
         {diff.map((part, index) => {
@@ -434,7 +484,7 @@ export default function VerificationDashboard({ apiKey }: VerificationDashboardP
                 title="Added Word"
                 style={{ 
                   backgroundColor: "rgba(16, 185, 129, 0.25)", 
-                  color: "#34d399", 
+                  color: "var(--color-match)", 
                   padding: "0 4px", 
                   borderRadius: "2px", 
                   border: "1px dashed var(--color-match)" 
@@ -450,7 +500,7 @@ export default function VerificationDashboard({ apiKey }: VerificationDashboardP
                 title="Missing Word"
                 style={{ 
                   backgroundColor: "rgba(239, 68, 68, 0.2)", 
-                  color: "#f87171", 
+                  color: "var(--color-mismatch)", 
                   padding: "0 4px", 
                   borderRadius: "2px", 
                   textDecoration: "line-through" 
@@ -549,7 +599,7 @@ export default function VerificationDashboard({ apiKey }: VerificationDashboardP
                   <img 
                     src={uploadedImage} 
                     alt="Uploaded label" 
-                    style={{ width: "100%", height: "100%", objectFit: "contain", backgroundColor: "#020617" }} 
+                    style={{ width: "100%", height: "100%", objectFit: "contain", backgroundColor: "var(--bg-tertiary)" }} 
                   />
                 </div>
               ) : (
@@ -558,8 +608,9 @@ export default function VerificationDashboard({ apiKey }: VerificationDashboardP
                   style={{ 
                     borderRadius: "var(--radius-md)", 
                     maxWidth: "100%", 
-                    boxShadow: "0 10px 30px rgba(0,0,0,0.3)" 
-                  }} 
+                    boxShadow: "0 1px 3px rgba(27,27,27,0.12)",
+                    border: "1px solid var(--bg-tertiary)"
+                  }}
                 />
               )}
             </div>
@@ -645,7 +696,7 @@ export default function VerificationDashboard({ apiKey }: VerificationDashboardP
                 padding: "1.25rem",
                 borderRadius: "var(--radius-md)",
                 border: dragActive ? "2px dashed var(--primary)" : "2px dashed var(--bg-tertiary)",
-                backgroundColor: dragActive ? "var(--primary-glow)" : "rgba(15,23,42,0.2)",
+                backgroundColor: dragActive ? "var(--primary-glow)" : "var(--bg-primary)",
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
@@ -671,11 +722,38 @@ export default function VerificationDashboard({ apiKey }: VerificationDashboardP
 
           {/* Reference Application Form */}
           <div className="glass-panel">
-            <h3 style={{ fontSize: "1rem", fontWeight: "600", marginBottom: "1rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              <FileText size={18} style={{ color: "var(--accent-blue)" }} />
-              COLA Form Parameters (Reference)
-            </h3>
-            
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem", marginBottom: "1rem" }}>
+              <h3 style={{ fontSize: "1rem", fontWeight: "600", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <FileText size={18} style={{ color: "var(--accent-blue)" }} />
+                COLA Form Parameters (Reference)
+              </h3>
+              <button
+                onClick={handleAutofill}
+                disabled={autofilling || loading}
+                title="Read the fields off the label image with AI as a starting point, then adjust to match the application."
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.375rem",
+                  padding: "0.4rem 0.75rem",
+                  borderRadius: "var(--radius-sm)",
+                  backgroundColor: "transparent",
+                  border: "1px solid var(--primary)",
+                  color: "var(--primary)",
+                  fontSize: "0.75rem",
+                  fontWeight: "600",
+                  cursor: autofilling || loading ? "not-allowed" : "pointer",
+                  opacity: autofilling || loading ? 0.6 : 1,
+                }}
+              >
+                {autofilling ? (
+                  <><RefreshCw size={14} className="animate-spin" /> Reading label…</>
+                ) : (
+                  <><Sparkles size={14} /> Autofill from label</>
+                )}
+              </button>
+            </div>
+
             <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
               <div>
                 <label style={{ fontSize: "0.75rem", fontWeight: "600", color: "var(--text-secondary)", display: "block", marginBottom: "0.25rem" }}>
@@ -909,7 +987,7 @@ export default function VerificationDashboard({ apiKey }: VerificationDashboardP
                   disabled={!apiKey && !process.env.NEXT_PUBLIC_GEMINI_API_KEY}
                   style={{
                     padding: "0.5rem 1rem",
-                    backgroundColor: "rgba(99,102,241,0.1)",
+                    backgroundColor: "var(--primary-glow)",
                     border: "1px solid var(--primary)",
                     color: "var(--primary)",
                     fontSize: "0.825rem",
@@ -970,7 +1048,7 @@ export default function VerificationDashboard({ apiKey }: VerificationDashboardP
                       style={{ 
                         display: "flex", 
                         flexDirection: "column", 
-                        borderBottom: "1px solid rgba(255,255,255,0.03)", 
+                        borderBottom: "1px solid var(--bg-tertiary)", 
                         paddingBottom: "1rem" 
                       }}
                     >

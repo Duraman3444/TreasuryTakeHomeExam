@@ -578,12 +578,12 @@ export default function BatchDashboard({ apiKey }: BatchDashboardProps) {
   const renderDiff = (diff: DiffPart[] | undefined) => {
     if (!diff) return null;
     return (
-      <div style={{ display: "flex", flexWrap: "wrap", gap: "0.2rem", backgroundColor: "rgba(15,23,42,0.6)", padding: "0.5rem", borderRadius: "4px", fontFamily: "monospace", fontSize: "0.7rem", marginTop: "0.25rem" }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "0.2rem", backgroundColor: "var(--bg-primary)", padding: "0.5rem", borderRadius: "4px", fontFamily: "monospace", fontSize: "0.7rem", marginTop: "0.25rem" }}>
         {diff.map((part, index) => {
           if (part.type === "match") return <span key={index} style={{ color: "var(--text-primary)" }}>{part.value}</span>;
           if (part.type === "mismatch-case") return <span key={index} style={{ color: "var(--color-warning)", textDecoration: "underline" }}>{part.value}</span>;
-          if (part.type === "added") return <span key={index} style={{ backgroundColor: "rgba(16, 185, 129, 0.2)", color: "#34d399", padding: "0 2px" }}>{part.value}</span>;
-          return <span key={index} style={{ backgroundColor: "rgba(239, 68, 68, 0.2)", color: "#f87171", padding: "0 2px", textDecoration: "line-through" }}>{part.value}</span>;
+          if (part.type === "added") return <span key={index} style={{ backgroundColor: "rgba(16, 185, 129, 0.2)", color: "var(--color-match)", padding: "0 2px" }}>{part.value}</span>;
+          return <span key={index} style={{ backgroundColor: "rgba(239, 68, 68, 0.2)", color: "var(--color-mismatch)", padding: "0 2px", textDecoration: "line-through" }}>{part.value}</span>;
         })}
       </div>
     );
@@ -744,13 +744,13 @@ export default function BatchDashboard({ apiKey }: BatchDashboardProps) {
               marginTop: "0.25rem" 
             }}
           >
-            <div style={{ backgroundColor: "rgba(255,255,255,0.02)", padding: "0.75rem", borderRadius: "var(--radius-sm)", border: "1px solid var(--bg-tertiary)" }}>
+            <div style={{ backgroundColor: "var(--bg-primary)", padding: "0.75rem", borderRadius: "var(--radius-sm)", border: "1px solid var(--bg-tertiary)" }}>
               <div style={{ fontSize: "0.675rem", color: "var(--text-muted)", fontWeight: "600" }}>PENDING</div>
               <div style={{ fontSize: "1.25rem", fontWeight: "700", display: "flex", alignItems: "center", gap: "0.25rem" }}>
                 <Clock size={16} style={{ color: "var(--text-muted)" }} /> {pendingItems}
               </div>
             </div>
-            <div style={{ backgroundColor: "rgba(255,255,255,0.02)", padding: "0.75rem", borderRadius: "var(--radius-sm)", border: "1px solid var(--bg-tertiary)" }}>
+            <div style={{ backgroundColor: "var(--bg-primary)", padding: "0.75rem", borderRadius: "var(--radius-sm)", border: "1px solid var(--bg-tertiary)" }}>
               <div style={{ fontSize: "0.675rem", color: "var(--text-muted)", fontWeight: "600" }}>VERIFYING</div>
               <div style={{ fontSize: "1.25rem", fontWeight: "700", display: "flex", alignItems: "center", gap: "0.25rem" }}>
                 <RefreshCw size={16} className={verifyingItems > 0 ? "animate-spin" : ""} style={{ color: "var(--primary)" }} /> {verifyingItems}
@@ -778,8 +778,9 @@ export default function BatchDashboard({ apiKey }: BatchDashboardProps) {
         </div>
       )}
 
-      {/* Queue items list */}
-      {items.length === 0 ? (
+      {/* Upload zones — kept available before AND after a CSV/images are added,
+          so labels can still be uploaded once the CSV has built the queue. */}
+      {(items.length === 0 || csvData.length > 0 || customImages.length > 0) && (
         <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
           {/* Main Drag Drop Areas */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1.5rem" }}>
@@ -820,7 +821,7 @@ export default function BatchDashboard({ apiKey }: BatchDashboardProps) {
                   border: "1px dashed var(--bg-tertiary)",
                   borderRadius: "var(--radius-sm)",
                   cursor: "pointer",
-                  backgroundColor: "rgba(15,23,42,0.2)",
+                  backgroundColor: "var(--bg-primary)",
                   gap: "0.5rem",
                   padding: "1rem"
                 }}
@@ -853,7 +854,7 @@ export default function BatchDashboard({ apiKey }: BatchDashboardProps) {
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
                     {customImages.map((img, i) => (
-                      <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.75rem", padding: "0.25rem 0.5rem", backgroundColor: "rgba(15,23,42,0.4)", borderRadius: "4px" }}>
+                      <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.75rem", padding: "0.25rem 0.5rem", backgroundColor: "var(--bg-primary)", borderRadius: "4px" }}>
                         <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "80%" }}>{img.name}</span>
                         <button 
                           onClick={() => setCustomImages(prev => prev.filter((_, idx) => idx !== i))}
@@ -904,7 +905,7 @@ export default function BatchDashboard({ apiKey }: BatchDashboardProps) {
                   border: "1px dashed var(--bg-tertiary)",
                   borderRadius: "var(--radius-sm)",
                   cursor: "pointer",
-                  backgroundColor: "rgba(15,23,42,0.2)",
+                  backgroundColor: "var(--bg-primary)",
                   gap: "0.5rem",
                   padding: "1rem"
                 }}
@@ -938,7 +939,7 @@ export default function BatchDashboard({ apiKey }: BatchDashboardProps) {
                       Clear CSV
                     </button>
                   </div>
-                  <div style={{ fontSize: "0.75rem", backgroundColor: "rgba(15,23,42,0.4)", padding: "0.5rem", borderRadius: "var(--radius-sm)", display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                  <div style={{ fontSize: "0.75rem", backgroundColor: "var(--bg-primary)", padding: "0.5rem", borderRadius: "var(--radius-sm)", display: "flex", flexDirection: "column", gap: "0.25rem" }}>
                     {csvData.slice(0, 3).map((row, idx) => (
                       <div key={idx} style={{ display: "flex", justifyContent: "space-between", color: "var(--text-secondary)" }}>
                         <span style={{ fontStyle: "italic" }}>{row.filename}</span>
@@ -964,9 +965,9 @@ export default function BatchDashboard({ apiKey }: BatchDashboardProps) {
                 style={{
                   padding: "0.5rem 0.75rem",
                   borderRadius: "var(--radius-sm)",
-                  backgroundColor: "rgba(99, 102, 241, 0.12)",
+                  backgroundColor: "var(--primary-glow)",
                   color: "var(--primary)",
-                  border: "1px solid rgba(99, 102, 241, 0.25)",
+                  border: "1px solid var(--bg-tertiary)",
                   fontSize: "0.75rem",
                   fontWeight: "600",
                   cursor: "pointer",
@@ -1065,12 +1066,15 @@ export default function BatchDashboard({ apiKey }: BatchDashboardProps) {
             </div>
           )}
         </div>
-      ) : (
+      )}
+
+      {/* Queue items list — shown whenever there are items in the queue */}
+      {items.length > 0 && (
         <div className="glass-panel" style={{ padding: 0, overflow: "hidden" }}>
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "0.875rem" }}>
               <thead>
-                <tr style={{ backgroundColor: "rgba(255,255,255,0.02)", borderBottom: "1px solid var(--bg-tertiary)" }}>
+                <tr style={{ backgroundColor: "var(--bg-primary)", borderBottom: "1px solid var(--bg-tertiary)" }}>
                   <th style={{ padding: "1rem" }}>Application / Label File</th>
                   <th style={{ padding: "1rem" }}>Brand Name</th>
                   <th style={{ padding: "1rem" }}>ABV</th>
@@ -1087,9 +1091,9 @@ export default function BatchDashboard({ apiKey }: BatchDashboardProps) {
                       <tr 
                         onClick={() => item.status === "success" && setExpandedItemId(isExpanded ? null : item.id)}
                         style={{ 
-                          borderBottom: "1px solid rgba(255,255,255,0.03)", 
+                          borderBottom: "1px solid var(--bg-tertiary)", 
                           cursor: item.status === "success" ? "pointer" : "default",
-                          backgroundColor: isExpanded ? "rgba(255,255,255,0.01)" : "transparent",
+                          backgroundColor: isExpanded ? "var(--bg-primary)" : "transparent",
                           transition: "background-color var(--transition-fast)"
                         }}
                         className={item.status === "success" ? "hover:bg-slate-800" : ""}
@@ -1101,7 +1105,7 @@ export default function BatchDashboard({ apiKey }: BatchDashboardProps) {
                               <img
                                 src={item.imageData}
                                 alt="Thumbnail"
-                                style={{ width: "36px", height: "36px", objectFit: "cover", borderRadius: "4px", backgroundColor: "#000", border: "1px solid var(--bg-tertiary)" }}
+                                style={{ width: "36px", height: "36px", objectFit: "cover", borderRadius: "4px", backgroundColor: "var(--bg-tertiary)", border: "1px solid var(--bg-tertiary)" }}
                               />
                             ) : (
                               <div
@@ -1186,7 +1190,7 @@ export default function BatchDashboard({ apiKey }: BatchDashboardProps) {
 
                       {/* Expanded side-by-side verification report for batch row */}
                       {isExpanded && item.status === "success" && (
-                        <tr style={{ backgroundColor: "rgba(15,23,42,0.5)" }}>
+                        <tr style={{ backgroundColor: "var(--bg-tertiary)" }}>
                           <td colSpan={5} style={{ padding: "1.25rem", borderBottom: "1px solid var(--bg-tertiary)" }}>
                             <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "1.5rem", alignItems: "start" }}>
                               
@@ -1200,11 +1204,11 @@ export default function BatchDashboard({ apiKey }: BatchDashboardProps) {
                                     <img
                                       src={item.imageData}
                                       alt="Artwork"
-                                      style={{ width: "100%", maxHeight: "250px", objectFit: "contain", borderRadius: "8px", border: "1px solid var(--bg-tertiary)", backgroundColor: "#020617" }}
+                                      style={{ width: "100%", maxHeight: "250px", objectFit: "contain", borderRadius: "8px", border: "1px solid var(--bg-tertiary)", backgroundColor: "var(--bg-tertiary)" }}
                                     />
                                   ) : (
                                     <div
-                                      style={{ width: "100%", height: "150px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "0.5rem", borderRadius: "8px", border: "1px dashed var(--bg-tertiary)", backgroundColor: "#020617", color: "var(--text-muted)", fontSize: "0.75rem" }}
+                                      style={{ width: "100%", height: "150px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "0.5rem", borderRadius: "8px", border: "1px dashed var(--bg-tertiary)", backgroundColor: "var(--bg-tertiary)", color: "var(--text-muted)", fontSize: "0.75rem" }}
                                     >
                                       <FileImage size={24} />
                                       No matching image uploaded
@@ -1222,7 +1226,7 @@ export default function BatchDashboard({ apiKey }: BatchDashboardProps) {
                                     const fieldTitle = fieldName.replace(/([A-Z])/g, " $1").replace(/^./, (str: string) => str.toUpperCase());
                                     
                                     return (
-                                      <div key={fieldName} style={{ borderBottom: "1px solid rgba(255,255,255,0.02)", paddingBottom: "0.5rem" }}>
+                                      <div key={fieldName} style={{ borderBottom: "1px solid var(--bg-primary)", paddingBottom: "0.5rem" }}>
                                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                                           <span style={{ fontSize: "0.75rem", fontWeight: "600" }}>{fieldTitle}</span>
                                           <span style={{ 
